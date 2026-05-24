@@ -1,0 +1,22 @@
+# Node modules
+node_modules/
+edutube-backend/node_modules/
+edutube-frontend/node_modules/
+
+# Environment variables
+.env
+edutube-backend/.env
+edutube-frontend/.env
+
+# Local Uploads (Crucial: Do not commit media files)
+edutube-backend/uploads/*
+!edutube-backend/uploads/.gitkeep
+
+# Frontend Build Output
+edutube-frontend/dist/
+edutube-frontend/dist-ssr/
+
+# OS/Editor Files
+.DS_Store
+.vscode/
+*.log
