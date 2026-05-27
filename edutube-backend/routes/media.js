@@ -2,34 +2,42 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const fs = require('fs');
-const path = require('path');
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const Media = require('../models/Media');
 
-// Configure Multer for local storage
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'uploads/');
-    },
-    filename: (req, file, cb) => {
-        cb(null, Date.now() + '-' + file.originalname.replace(/\s+/g, '-'));
+// Configure Cloudinary Credentials
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+// Configure Multer to push directly to Cloudinary
+const storage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: 'edutube_media', // A folder will be created in your Cloudinary account
+        resource_type: 'auto'    // CRITICAL: 'auto' allows videos and PDFs. Default only allows images.
     }
 });
 const upload = multer({ storage });
 
-// 1. Educator: Upload Media
+// 1. Educator: Upload Media to Cloud
 router.post('/upload', upload.single('file'), async (req, res) => {
     try {
         const { name, authorName, authorId, tags } = req.body;
         
         if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
-        // tags might come as a comma-separated string from form-data
         const tagArray = tags ? tags.split(',').map(tag => tag.trim().toLowerCase()) : [];
 
+        // req.file.path now contains the secure Cloudinary URL
+        // req.file.filename contains the Cloudinary public_id
         const newMedia = new Media({
             name,
-            filename: req.file.filename,
+            fileUrl: req.file.path,
+            publicId: req.file.filename, 
             mimetype: req.file.mimetype,
             authorName,
             authorId,
@@ -61,45 +69,45 @@ router.get('/search', async (req, res) => {
 });
 
 // 3. Student: Stream Video
-router.get('/stream/:id', async (req, res) => {
-    try {
-        const media = await Media.findById(req.params.id);
-        if (!media) return res.status(404).json({ error: 'Media not found' });
+// router.get('/stream/:id', async (req, res) => {
+//     try {
+//         const media = await Media.findById(req.params.id);
+//         if (!media) return res.status(404).json({ error: 'Media not found' });
 
-        const videoPath = path.join(__dirname, '../uploads', media.filename);
-        if (!fs.existsSync(videoPath)) return res.status(404).json({ error: 'File missing on server' });
+//         const videoPath = path.join(__dirname, '../uploads', media.filename);
+//         if (!fs.existsSync(videoPath)) return res.status(404).json({ error: 'File missing on server' });
 
-        const stat = fs.statSync(videoPath);
-        const fileSize = stat.size;
-        const range = req.headers.range;
+//         const stat = fs.statSync(videoPath);
+//         const fileSize = stat.size;
+//         const range = req.headers.range;
 
-        if (range) {
-            const parts = range.replace(/bytes=/, "").split("-");
-            const start = parseInt(parts[0], 10);
-            const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-            const chunksize = (end - start) + 1;
-            const file = fs.createReadStream(videoPath, { start, end });
+//         if (range) {
+//             const parts = range.replace(/bytes=/, "").split("-");
+//             const start = parseInt(parts[0], 10);
+//             const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+//             const chunksize = (end - start) + 1;
+//             const file = fs.createReadStream(videoPath, { start, end });
             
-            const head = {
-                'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-                'Accept-Ranges': 'bytes',
-                'Content-Length': chunksize,
-                'Content-Type': media.mimetype,
-            };
-            res.writeHead(206, head); // 206 Partial Content
-            file.pipe(res);
-        } else {
-            const head = {
-                'Content-Length': fileSize,
-                'Content-Type': media.mimetype,
-            };
-            res.writeHead(200, head);
-            fs.createReadStream(videoPath).pipe(res);
-        }
-    } catch (err) {
-        res.status(500).json({ error: 'Streaming error' });
-    }
-});
+//             const head = {
+//                 'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+//                 'Accept-Ranges': 'bytes',
+//                 'Content-Length': chunksize,
+//                 'Content-Type': media.mimetype,
+//             };
+//             res.writeHead(206, head); // 206 Partial Content
+//             file.pipe(res);
+//         } else {
+//             const head = {
+//                 'Content-Length': fileSize,
+//                 'Content-Type': media.mimetype,
+//             };
+//             res.writeHead(200, head);
+//             fs.createReadStream(videoPath).pipe(res);
+//         }
+//     } catch (err) {
+//         res.status(500).json({ error: 'Streaming error' });
+//     }
+// });
 
 // 4. Student: Toggle Upvote Media
 router.put('/upvote/:id', async (req, res) => {

@@ -67,33 +67,32 @@ export default function StudentPortal({ user }) {
               </p>
 
                 <div style={{ margin: '15px 0' }}>
-                    {media?.mimetype?.includes('video') ? (
-                        <video src={`http://localhost:5000/api/media/stream/${media._id}`} controls style={{ maxWidth: '100%', maxHeight: '400px' }} />
-                    ) : media?.mimetype?.includes('image') ? (
-                        <img src={`http://localhost:5000/uploads/${media.filename}`} alt={media?.name} style={{ maxWidth: '100%', maxHeight: '400px' }} />
-                    ) : (
-                        <a 
-                        href={`http://localhost:5000/uploads/${media?.filename}`} 
-                        download={media?.filename} 
-                        target="_blank" 
-                        rel="noreferrer"
-                        style={{ 
-                            display: 'inline-block',
-                            padding: '8px 12px', 
-                            backgroundColor: '#e0e0e0',
-                            color: '#000',
-                            border: '1px solid #ccc',
-                            borderRadius: '3px',
-                            textDecoration: 'none',
-                            cursor: 'pointer',
-                            fontSize: '13px'
-                            }}
-                        >
-                            Download / View File
-                        </a>
-                    )}
+                  {media?.mimetype?.includes('video') ? (
+                    <video src={media.fileUrl} controls style={{ maxWidth: '100%', maxHeight: '400px' }} />
+                  ) : media?.mimetype?.includes('image') ? (
+                    <img src={media.fileUrl} alt={media?.name} style={{ maxWidth: '100%', maxHeight: '400px' }} />
+                  ) : (
+                    <a 
+                      href={media.fileUrl} 
+                      download={media?.name} 
+                      target="_blank" 
+                      rel="noreferrer"
+                      style={{ 
+                        display: 'inline-block',
+                        padding: '8px 12px', 
+                        backgroundColor: '#e0e0e0',
+                        color: '#000',
+                        border: '1px solid #ccc',
+                        borderRadius: '3px',
+                        textDecoration: 'none',
+                        cursor: 'pointer',
+                        fontSize: '13px'
+                      }}
+                    >
+                      Download / View File
+                    </a>
+                  )}
                 </div>
-
               {/* Dynamic styling and text based on toggle state */}
               <button 
                 onClick={() => handleUpvote(media._id, index)}
