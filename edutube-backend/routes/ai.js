@@ -141,4 +141,61 @@ router.post('/ask/:mediaId', auth, async (req, res) => {
     }
 });
 
+// 3. AI Agent Search (Natural Language to Database Query)
+router.post('/agent-search', auth, async (req, res) => {
+    try {
+        const { query } = req.body;
+        if (!query) return res.status(400).json({ error: 'Query is required' });
+
+        // 1. Send the natural language query to Groq
+        const chatCompletion = await groq.chat.completions.create({
+            messages: [
+                {
+                    role: 'system',
+                    content: `You are an intelligent search routing agent for an educational database.
+Your job is to analyze the user's natural language request and extract the core search parameters.
+We can search by 'tag' (topic, subject, concept) or 'author' (educator name or ID).
+Respond strictly with valid JSON. Do not add markdown blocks or conversational text.
+Format: {"type": "tag" | "author", "value": "core search string"}
+
+Examples:
+"Show me videos about machine learning" -> {"type": "tag", "value": "machine learning"}
+"I want to see content uploaded by prof roy" -> {"type": "author", "value": "prof roy"}
+"help me understand java arrays" -> {"type": "tag", "value": "java arrays"}`
+                },
+                { role: 'user', content: query }
+            ],
+            model: 'llama-3.1-8b-instant',
+            temperature: 0, // Zero temperature prevents the AI from getting creative
+            response_format: { type: "json_object" } // Force Groq to return parseable JSON
+        });
+
+        // 2. Parse the AI's decision
+        const aiDecision = JSON.parse(chatCompletion.choices[0].message.content);
+        console.log("AI Search Decision:", aiDecision);
+
+        // 3. Execute the database search based on the AI's logic
+        let dbQuery = {};
+        if (aiDecision.type === 'tag') {
+            // Use regex so "java" matches "java arrays"
+            dbQuery.tags = { $regex: aiDecision.value, $options: 'i' };
+        } else if (aiDecision.type === 'author') {
+            dbQuery.$or = [
+                { authorName: { $regex: aiDecision.value, $options: 'i' } },
+                { authorId: { $regex: aiDecision.value, $options: 'i' } }
+            ];
+        }
+
+        const media = await Media.find(dbQuery).sort({ timestamp: -1 });
+        
+        res.json({ 
+            results: media, 
+            interpretedAs: aiDecision // We send this back to show the student what the AI decided
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'AI Search failed' });
+    }
+});
+
 module.exports = router;

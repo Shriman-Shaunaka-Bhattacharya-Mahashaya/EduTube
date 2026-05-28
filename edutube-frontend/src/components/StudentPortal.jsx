@@ -9,6 +9,7 @@ export default function StudentPortal({ user, token }) {
   const [interests, setInterests] = useState([]); 
   const [savedMedia, setSavedMedia] = useState([]); 
   const [error, setError] = useState('');
+  const [aiInterpretation, setAiInterpretation] = useState(''); // NEW STATE
 
   // --- NEW AI CHAT STATE ---
   const [activeAiMediaId, setActiveAiMediaId] = useState(null);
@@ -47,18 +48,31 @@ export default function StudentPortal({ user, token }) {
   const executeSearch = async (type, query) => {
     if (!query.trim()) return setError('Please enter a search term.');
     setError('');
+    setAiInterpretation(''); // Reset interpretation on new search
     setSearchType(type === 'id' ? 'tag' : type); 
     setSearchQuery(type === 'id' ? '' : query); 
 
     try {
-      let endpoint = `http://localhost:5000/api/media/search?`;
-      if (type === 'tag') endpoint += `tag=${query.trim()}`;
-      if (type === 'educator') endpoint += `author=${query.trim()}`;
-      if (type === 'id') endpoint += `id=${query.trim()}`;
+      if (type === 'ai') {
+        // --- NEW AI AGENT ROUTING ---
+        const res = await axios.post(`http://localhost:5000/api/ai/agent-search`, 
+          { query: query.trim() }, 
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setResults(res.data.results);
+        setAiInterpretation(`🧠 AI understood your search as a ${res.data.interpretedAs.type}: "${res.data.interpretedAs.value}"`);
+        if (res.data.results.length === 0) setError(`No media found.`);
+      } else {
+        // --- STANDARD ROUTING ---
+        let endpoint = `http://localhost:5000/api/media/search?`;
+        if (type === 'tag') endpoint += `tag=${query.trim()}`;
+        if (type === 'educator') endpoint += `author=${query.trim()}`;
+        if (type === 'id') endpoint += `id=${query.trim()}`;
 
-      const res = await axios.get(endpoint);
-      setResults(res.data);
-      if (res.data.length === 0) setError(`No media found.`);
+        const res = await axios.get(endpoint);
+        setResults(res.data);
+        if (res.data.length === 0) setError(`No media found.`);
+      }
     } catch (err) {
       setError('Search failed.');
     }
@@ -221,23 +235,37 @@ export default function StudentPortal({ user, token }) {
         )}
       </div>
 
-      {/* Standard Search Form */}
-      <form onSubmit={handleSearchSubmit} style={{ marginBottom: '20px', display: 'flex', gap: '10px', alignItems: 'center' }}>
-        <select value={searchType} onChange={e => setSearchType(e.target.value)} style={{ padding: '8px' }}>
-          <option value="tag">Search by Tag</option>
-          <option value="educator">Search by Educator</option>
-        </select>
-        <input 
-          type="text" 
-          placeholder={searchType === 'tag' ? "e.g., react" : "e.g., prof_roy"} 
-          value={searchQuery} 
-          onChange={e => setSearchQuery(e.target.value)} 
-          style={{ padding: '8px', flexGrow: 1, maxWidth: '300px' }}
-        />
-        <button type="submit" style={{ padding: '8px 15px', cursor: 'pointer' }}>Search</button>
-      </form>
+      {/* Search Form */}
+      <div style={{ marginBottom: '20px' }}>
+        <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <select value={searchType} onChange={e => setSearchType(e.target.value)} style={{ padding: '8px' }}>
+            <option value="tag">Search by Tag</option>
+            <option value="educator">Search by Educator</option>
+            <option value="ai">Ask AI (Natural Language)</option>
+          </select>
+          <input 
+            type="text" 
+            placeholder={
+              searchType === 'ai' ? "e.g., I want to learn about java arrays..." :
+              searchType === 'tag' ? "e.g., react" : "e.g., prof_roy"
+            } 
+            value={searchQuery} 
+            onChange={e => setSearchQuery(e.target.value)} 
+            style={{ padding: '8px', flexGrow: 1, maxWidth: '400px' }}
+          />
+          <button type="submit" style={{ padding: '8px 15px', cursor: 'pointer', backgroundColor: searchType === 'ai' ? '#8e44ad' : '#ecf0f1', color: searchType === 'ai' ? 'white' : 'black', border: '1px solid #ccc', fontWeight: searchType === 'ai' ? 'bold' : 'normal' }}>
+            {searchType === 'ai' ? '✨ AI Search' : 'Search'}
+          </button>
+        </form>
 
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+        {/* AI Feedback Bar */}
+        {aiInterpretation && (
+          <div style={{ marginTop: '10px', padding: '10px', backgroundColor: '#f4f0fa', color: '#6c3483', borderRadius: '5px', fontSize: '0.9em', borderLeft: '4px solid #8e44ad' }}>
+            {aiInterpretation}
+          </div>
+        )}
+        {error && <p style={{ color: 'red', marginTop: '10px' }}>{error}</p>}
+      </div>
 
       {/* Search Results */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
