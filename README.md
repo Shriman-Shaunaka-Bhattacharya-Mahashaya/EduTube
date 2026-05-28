@@ -17,10 +17,15 @@ EduTube is a full-stack role-based learning platform. It allows educators to hos
 ## 🛠️ Tech Stack
 
 **Frontend:** React.js, Vite, Axios
+
 **Backend:** Node.js, Express.js
+
 **Database:** MongoDB Atlas (Document Store & Native Vector Search Engine)
+
 **Storage / CDN:** Cloudinary, Multer
+
 **Authentication:** JSON Web Tokens (JWT), bcryptjs
+
 **AI / ML:** Groq SDK (Llama 3.1 8B), `@xenova/transformers`, `pdf-parse`
 
 ---
