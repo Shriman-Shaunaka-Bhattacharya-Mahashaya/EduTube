@@ -5,6 +5,7 @@ const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const Media = require('../models/Media');
+const auth = require('../middleware/auth');
 
 // Configure Cloudinary Credentials
 cloudinary.config({
@@ -24,7 +25,7 @@ const storage = new CloudinaryStorage({
 const upload = multer({ storage });
 
 // 1. Educator: Upload Media to Cloud
-router.post('/upload', upload.single('file'), async (req, res) => {
+router.post('/upload', auth, upload.single('file'), async (req, res) => {
     try {
         const { name, authorName, authorId, tags } = req.body;
         
@@ -110,7 +111,7 @@ router.get('/search', async (req, res) => {
 // });
 
 // 4. Student: Toggle Upvote Media
-router.put('/upvote/:id', async (req, res) => {
+router.put('/upvote/:id', auth, async (req, res) => {
     try {
         const { userId } = req.body;
         if (!userId) return res.status(400).json({ error: 'User ID is required' });
@@ -141,7 +142,7 @@ router.put('/upvote/:id', async (req, res) => {
 });
 
 // 5. Educator: Get own uploaded media
-router.get('/educator/:authorId', async (req, res) => {
+router.get('/educator/:authorId', auth, async (req, res) => {
     try {
         const { authorId } = req.params;
         // Find media matching the ID and sort newest first

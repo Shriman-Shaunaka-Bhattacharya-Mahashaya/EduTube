@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import axios from 'axios';
 
 // Receive the user prop here
-export default function StudentPortal({ user }) {
+// Receive the token prop
+export default function StudentPortal({ user, token }) {
   const [searchTag, setSearchTag] = useState('');
   const [results, setResults] = useState([]);
   const [error, setError] = useState('');
@@ -21,10 +22,11 @@ export default function StudentPortal({ user }) {
 
   const handleUpvote = async (id, index) => {
     try {
-      // Pass the userId in the body
-      const res = await axios.put(`http://localhost:5000/api/media/upvote/${id}`, {
-        userId: user.userId
-      });
+      // Attach the Authorization header for upvoting
+      const res = await axios.put(`http://localhost:5000/api/media/upvote/${id}`, 
+        { userId: user.userId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       
       const newResults = [...results];
       // Update both the count and the array from the backend response
@@ -32,10 +34,10 @@ export default function StudentPortal({ user }) {
       newResults[index].upvotedBy = res.data.upvotedBy;
       setResults(newResults);
     } catch (err) {
-      console.error('Upvote failed');
+      console.error('Upvote failed', err);
     }
   };
-
+  
   return (
     <div>
       <form onSubmit={handleSearch} style={{ marginBottom: '20px' }}>

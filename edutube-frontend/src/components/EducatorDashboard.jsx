@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-export default function EducatorDashboard({ user }) {
+// 1. Receive the token prop
+export default function EducatorDashboard({ user, token }) {
   const [file, setFile] = useState(null);
   const [name, setName] = useState('');
   const [tags, setTags] = useState('');
@@ -10,24 +11,28 @@ export default function EducatorDashboard({ user }) {
 
   const fetchMyMedia = async () => {
     try {
-      const res = await axios.get(`http://localhost:5000/api/media/educator/${user.userId}`);
+      // 2. Attach Authorization header for fetching media
+      const res = await axios.get(`http://localhost:5000/api/media/educator/${user.userId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setMyMedia(res.data);
     } catch (err) {
       console.error('Failed to fetch media', err);
+      if (err.response?.status === 401) setStatus('Session expired. Please log in again.');
     }
   };
 
   useEffect(() => {
-    if (user?.userId) {
+    if (user?.userId && token) {
       fetchMyMedia();
     }
-  }, [user.userId]);
+  }, [user.userId, token]);
 
   const handleUpload = async (e) => {
     e.preventDefault();
     if (!file) return setStatus('Please select a file.');
 
-    setStatus('Uploading...');
+    setStatus('Uploading to Cloudinary... this may take a moment.');
     
     const formData = new FormData();
     formData.append('file', file);
@@ -37,8 +42,12 @@ export default function EducatorDashboard({ user }) {
     formData.append('tags', tags);
 
     try {
+      // 3. Attach BOTH Content-Type and Authorization headers for upload
       await axios.post('http://localhost:5000/api/media/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${token}`
+        }
       });
       setStatus('Upload successful!');
       
@@ -89,12 +98,12 @@ export default function EducatorDashboard({ user }) {
                 {/* --- MEDIA RENDERING BLOCK --- */}
                 <div style={{ margin: '15px 0' }}>
                     {media?.mimetype?.includes('video') ? (
-                        <video src={`http://localhost:5000/api/media/stream/${media._id}`} controls style={{ maxWidth: '100%', maxHeight: '400px' }} />
+                        <video src={media.fileUrl} controls style={{ maxWidth: '100%', maxHeight: '400px' }} />
                     ) : media?.mimetype?.includes('image') ? (
-                        <img src={`http://localhost:5000/uploads/${media.filename}`} alt={media?.name} style={{ maxWidth: '100%', maxHeight: '400px' }} />
+                        <img src={media.fileUrl} alt={media?.name} style={{ maxWidth: '100%', maxHeight: '400px' }} />
                     ) : (
                         <a 
-                        href={`http://localhost:5000/uploads/${media?.filename}`} 
+                        href={media.fileUrl} 
                         download={media?.filename} 
                         target="_blank" 
                         rel="noreferrer"
