@@ -54,11 +54,17 @@ EduTube is a full-stack role-based learning platform. It allows educators to hos
 ### 1. Environment Variables
 Create a `.env` file in the `edutube-backend` root directory:
 PORT=5000
+
 MONGO_URI=your_mongodb_connection_string
+
 JWT_SECRET=your_jwt_key
+
 CLOUDINARY_CLOUD_NAME=your_cloud_name
+
 CLOUDINARY_API_KEY=your_api_key
+
 CLOUDINARY_API_SECRET=your_api_secret
+
 GROQ_API_KEY=your_groq_api_key
 
 ### 2. Install Dependencies
@@ -77,18 +83,32 @@ To enable the RAG pipeline, you must manually create a Vector Search Index in yo
 3. Name it exactly: `vector_index`
 4. Use this schema:
 {
+
+  
   "fields": [
+  
     {
+  
       "numDimensions": 384,
+  
       "path": "embedding",
+  
       "similarity": "cosine",
+  
       "type": "vector"
+  
     },
+  
     {
+  
       "path": "mediaId",
+  
       "type": "filter"
+  
     }
+  
   ]
+
 }
 
 ### 4. Boot the Application
