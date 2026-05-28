@@ -158,4 +158,44 @@ router.put('/interest', auth, async (req, res) => {
     }
 });
 
+// 8. Get Saved Media
+router.get('/saved-media', auth, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+        res.json(user.savedMedia || []);
+    } catch (err) {
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// 9. Toggle Saved Media (Bookmark)
+router.put('/saved-media', auth, async (req, res) => {
+    try {
+        const { mediaId, name } = req.body;
+        if (!mediaId || !name) return res.status(400).json({ error: 'Media ID and Name required' });
+
+        const user = await User.findById(req.user.id);
+        
+        if (user.role !== 'student') {
+            return res.status(403).json({ error: 'Only students can save media' });
+        }
+
+        // Check if the mediaId already exists in the array
+        const index = user.savedMedia.findIndex(m => m.mediaId === mediaId);
+        
+        if (index === -1) {
+            user.savedMedia.push({ mediaId, name }); // Save it
+        } else {
+            user.savedMedia.splice(index, 1); // Remove it
+        }
+
+        await user.save();
+        res.json(user.savedMedia); 
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to toggle saved media' });
+    }
+});
+
 module.exports = router;

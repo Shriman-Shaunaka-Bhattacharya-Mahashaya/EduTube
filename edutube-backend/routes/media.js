@@ -77,18 +77,22 @@ router.post('/upload', auth, (req, res) => {
     });
 });
 
-// 2. Student: Flexible Search (Tag or Author)
+// 2. Student: Flexible Search (Tag, Author, or Exact ID)
 router.get('/search', async (req, res) => {
     try {
-        const { tag, author } = req.query;
+        const { tag, author, id } = req.query;
         let query = {};
         
+        // Add ID exact match support
+        if (id) {
+            query._id = id;
+        }
+        
         if (tag) {
-            query.tags = tag.toLowerCase(); // Exact match for tags
+            query.tags = tag.toLowerCase(); 
         }
         
         if (author) {
-            // Case-insensitive partial match on either authorName or authorId
             query.$or = [
                 { authorName: { $regex: author, $options: 'i' } },
                 { authorId: { $regex: author, $options: 'i' } }
