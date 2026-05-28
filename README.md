@@ -83,7 +83,7 @@ To enable the RAG pipeline, you must manually create a Vector Search Index in yo
 3. Name it exactly: `vector_index`
 4. Use this schema:
 
-`
+```json
 {
   "fields": [
     {
@@ -98,7 +98,7 @@ To enable the RAG pipeline, you must manually create a Vector Search Index in yo
     }
   ]
 }
-`
+```
 
 ### 4. Boot the Application
 ### Start the backend API
