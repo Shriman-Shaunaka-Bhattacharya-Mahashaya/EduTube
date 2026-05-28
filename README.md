@@ -82,34 +82,23 @@ To enable the RAG pipeline, you must manually create a Vector Search Index in yo
 2. Create an **Atlas Search Index** using the JSON Editor.
 3. Name it exactly: `vector_index`
 4. Use this schema:
+
+`
 {
-
-  
   "fields": [
-  
     {
-  
       "numDimensions": 384,
-  
       "path": "embedding",
-  
       "similarity": "cosine",
-  
       "type": "vector"
-  
     },
-  
     {
-  
       "path": "mediaId",
-  
       "type": "filter"
-  
     }
-  
   ]
-
 }
+`
 
 ### 4. Boot the Application
 ### Start the backend API
