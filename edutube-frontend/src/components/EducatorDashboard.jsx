@@ -72,6 +72,27 @@ export default function EducatorDashboard({ user, token }) {
     }
   };
 
+  const handleDelete = async (mediaId) => {
+    const isConfirmed = window.confirm("Are you sure you want to permanently delete this media? This will also wipe the AI knowledge base for this file.");
+    if (!isConfirmed) return;
+
+    try {
+      await axios.delete(`http://localhost:5000/api/media/${mediaId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      // Update local state to remove the deleted item instantly without refreshing the page
+      setMyMedia(prevMedia => prevMedia.filter(media => media._id !== mediaId));
+      setStatus('Media successfully deleted.');
+      
+      // Clear status message after 3 seconds
+      setTimeout(() => setStatus(''), 3000);
+    } catch (err) {
+      console.error(err);
+      setStatus('Failed to delete media.');
+    }
+  };
+
   return (
     <div>
       {/* Educator Stats Dashboard */}
@@ -104,8 +125,29 @@ export default function EducatorDashboard({ user, token }) {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {myMedia.map(media => (
-              <div key={media._id} style={{ border: '1px solid #ccc', padding: '15px', borderRadius: '5px', backgroundColor: '#fafafa' }}>
-                <h4 style={{ margin: '0 0 10px 0' }}>{media.name}</h4>
+              <div key={media._id} style={{ border: '1px solid #ccc', padding: '15px', borderRadius: '5px', backgroundColor: '#fafafa', position: 'relative' }}>
+                
+                {/* Destructive Delete Button */}
+                <button 
+                  onClick={() => handleDelete(media._id)}
+                  style={{
+                    position: 'absolute',
+                    top: '15px',
+                    right: '15px',
+                    backgroundColor: '#e74c3c',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '3px',
+                    padding: '6px 12px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    fontSize: '0.85em'
+                  }}
+                >
+                  Delete Media
+                </button>
+
+                <h4 style={{ margin: '0 0 10px 0', paddingRight: '100px' }}>{media.name}</h4>
                 
                 <div style={{ fontSize: '0.9em', color: '#555', display: 'flex', gap: '20px' }}>
                   <span><strong>Type:</strong> {media.mimetype.split('/')[0]}</span>

@@ -6,6 +6,7 @@ const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const Media = require('../models/Media');
 const auth = require('../middleware/auth');
+const DocumentChunk = require('../models/DocumentChunk');
 
 // Configure Cloudinary Credentials
 cloudinary.config({
@@ -189,6 +190,53 @@ router.get('/educator/:authorId', auth, async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Failed to fetch educator media' });
+    }
+});
+
+// Delete Media, Wipe Vector Chunks, and Clear CDN Storage
+router.delete('/:id', auth, async (req, res) => {
+    try {
+        const mediaId = req.params.id;
+
+        // 1. Find the media
+        const media = await Media.findById(mediaId);
+        if (!media) {
+            return res.status(404).json({ error: 'Media not found' });
+        }
+
+        // 2. Security Gate: Only the exact educator who uploaded it can delete it
+        if (media.authorId !== req.user.userId) {
+            return res.status(403).json({ error: 'Unauthorized to delete this media' });
+        }
+
+        // 3. Extract the Cloudinary Public ID from the URL
+        // URL Format: https://res.cloudinary.com/.../upload/v12345/edutube_media/filename.pdf
+        const urlParts = media.fileUrl.split('/');
+        const filenameWithExt = urlParts[urlParts.length - 1];
+        const folder = urlParts[urlParts.length - 2];
+        const publicId = `${folder}/${filenameWithExt.split('.')[0]}`; 
+
+        // Determine Cloudinary resource type for deletion
+        let resourceType = 'image'; // Default for images and standard PDFs
+        if (media.mimetype.includes('video')) resourceType = 'video';
+        if (media.mimetype === 'application/zip' || media.mimetype === 'application/json') resourceType = 'raw';
+
+        // 4. Execute cascading deletions concurrently to optimize speed
+        await Promise.all([
+            // A. Destroy file on Cloudinary
+            cloudinary.uploader.destroy(publicId, { resource_type: resourceType }).catch(err => console.error("Cloudinary deletion failed:", err)),
+            
+            // B. Wipe associated vector chunks from the AI database
+            DocumentChunk.deleteMany({ mediaId: media._id }),
+            
+            // C. Delete the actual media document
+            Media.findByIdAndDelete(media._id)
+        ]);
+
+        res.json({ message: 'Media successfully deleted and system cleaned.' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to delete media' });
     }
 });
 

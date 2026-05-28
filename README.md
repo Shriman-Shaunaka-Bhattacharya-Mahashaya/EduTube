@@ -1,51 +1,93 @@
-# EduTube (MVP)
+# EduTube 🎓🤖
+**An AI-Powered Educational Media Platform with Local RAG & Intent Routing**
 
-A conceptual, role-based educational media platform built with the MERN stack. This is an initial Minimum Viable Product (MVP) designed to demonstrate core interactions between Educators and Students, including media uploading, tag-based searching, chunked video streaming, and stateful interaction.
+EduTube is a full-stack role-based learning platform. It allows educators to host secure, cloud-delivered content while empowering students with a custom-built AI Tutor. The platform features a zero-cost local embedding pipeline, MongoDB Atlas Vector Search, and a natural language routing agent powered by Llama 3.1.
 
-## Features
+---
 
-### Educator Portal
-- **ID-Based Authentication:** Simplified role-based login system.
-- **Media Uploading:** Supports `.mp4`, `.pdf`, `.jpg`/`.png`, and `.txt` via `multipart/form-data`.
-- **Dashboard:** Real-time visibility of historical uploads, upvote metrics, and inline media previews.
+## 🚀 Architectural Highlights
 
-### Student Portal
-- **Tag-Based Discovery:** Exact-match querying for specific educational topics.
-- **HTTP Range Streaming:** Native backend video chunking allowing students to stream and scrub through `.mp4` files without downloading the entire payload.
-- **Stateful Upvoting:** Array-based user tracking prevents duplicate upvoting and visually toggles interaction state.
+* **Zero-Cost RAG Pipeline:** Generates 384-dimensional vector embeddings locally within the Node.js process using `@xenova/transformers` (`all-MiniLM-L6-v2`), eliminating the need for paid embedding APIs.
+* **Agentic Search Routing:** Replaces standard database querying with an AI routing layer. Natural language queries (e.g., "I need help with Java arrays") are processed by Groq's Llama 3.1 to extract intent, dynamically constructing complex MongoDB regex queries on the fly.
+* **Cascading Teardowns:** Deleting media triggers a highly optimized concurrent teardown, simultaneously wiping the MongoDB document, purging orphaned vector data from the Atlas Search index, and destroying the physical file on the Cloudinary CDN to prevent storage bloat.
+* **Dual-Write Denormalization:** User metrics (like subscriber counts and bookmarked metadata) are strategically denormalized across collections to prevent expensive `$in` array lookups and pipeline bottlenecks on dashboard load.
 
-## Tech Stack
-- **Frontend:** React (Vite), React Router, Axios.
-- **Backend:** Node.js, Express.js.
-- **Database:** MongoDB Atlas (Mongoose).
-- **File Handling:** Multer, native Node `fs` streams.
+---
 
-## Local Installation & Setup
+## 🛠️ Tech Stack
 
-1. **Clone the repository:**
-   `git clone <your-repo-url>`
+**Frontend:** React.js, Vite, Axios
+**Backend:** Node.js, Express.js
+**Database:** MongoDB Atlas (Document Store & Native Vector Search Engine)
+**Storage / CDN:** Cloudinary, Multer
+**Authentication:** JSON Web Tokens (JWT), bcryptjs
+**AI / ML:** Groq SDK (Llama 3.1 8B), `@xenova/transformers`, `pdf-parse`
 
-2. **Backend Setup:**
-   - Navigate to the backend: `cd edutube-backend`
-   - Install dependencies: `npm install`
-   - Create a `.env` file in `edutube-backend` with your MongoDB URI:
-     `MONGO_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/edutube`
-     `PORT=5000`
-   - Create the uploads directory: `mkdir uploads`
-   - Start the server: `npm run dev`
+---
 
-3. **Frontend Setup:**
-   - Open a new terminal and navigate to the frontend: `cd edutube-frontend`
-   - Install dependencies: `npm install`
-   - Start the Vite server: `npm run dev`
+## ⚙️ Core Features
 
-4. **Usage:**
-   - Access the application at `http://localhost:5173`.
-   - Log in with any string and select "Educator" to upload content.
-   - Log in with any string and select "Student" to search tags and stream content.
+### 👨‍🏫 Educator Portal
+* **CDN Integration:** Upload videos, images, and PDFs securely to Cloudinary.
+* **Analytics:** Real-time subscriber tracking powered by dual-write database operations.
+* **Lifecycle Management:** Complete CRUD control with cascading system cleanup.
 
-## Current Architecture Limitations & Roadmap
-This repository represents Phase 1 of development. The following architectural updates are required before production deployment:
-- **Authentication:** Migrate from ID-based logic to secure JWT + bcrypt authentication.
-- **Storage:** Replace ephemeral local `uploads/` directory with persistent cloud storage (AWS S3 / Cloudinary).
-- **Optimization:** Implement backend file size limits and MIME-type validation.
+### 🎓 Student Portal
+* **Dynamic Dashboards:** Track subscribed educators, saved topics, and bookmarked media for hyper-fast `_id` retrieval.
+* **Interactive Media:** Upvote content, download files, and stream videos directly.
+* **Dual-State Search:** Toggle between strict database filtering and AI natural language intent routing.
+
+### 🧠 Embedded AI Tutor
+* **PDF Knowledge Base:** The backend downloads Cloudinary PDFs into memory buffers, chunks the text, and maps the vectors to the Atlas index.
+* **Contextual Chat:** Students can query the document in real-time. The AI is strictly prompted to ground its answers exclusively in the retrieved mathematical context.
+
+---
+
+## 💻 Local Setup & Deployment
+
+### 1. Environment Variables
+Create a `.env` file in the `edutube-backend` root directory:
+PORT=5000
+MONGO_URI=your_mongodb_connection_string
+JWT_SECRET=your_jwt_key
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+GROQ_API_KEY=your_groq_api_key
+
+### 2. Install Dependencies
+# Backend
+cd edutube-backend
+npm install
+
+# Frontend
+cd edutube-frontend
+npm install
+
+### 3. Provision the Atlas Vector Index (Critical)
+To enable the RAG pipeline, you must manually create a Vector Search Index in your MongoDB Atlas dashboard.
+1. Target the `documentchunks` collection.
+2. Create an **Atlas Search Index** using the JSON Editor.
+3. Name it exactly: `vector_index`
+4. Use this schema:
+{
+  "fields": [
+    {
+      "numDimensions": 384,
+      "path": "embedding",
+      "similarity": "cosine",
+      "type": "vector"
+    },
+    {
+      "path": "mediaId",
+      "type": "filter"
+    }
+  ]
+}
+
+### 4. Boot the Application
+# Start the backend API
+npm run dev
+
+# Start the Vite frontend
+npm run dev
