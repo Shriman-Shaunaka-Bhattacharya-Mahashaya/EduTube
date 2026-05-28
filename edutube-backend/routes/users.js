@@ -4,6 +4,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const auth = require('../middleware/auth');
 
 // 1. Register User
 router.post('/register', async (req, res) => {
@@ -52,6 +53,44 @@ router.post('/login', async (req, res) => {
         res.json({ token, user: { userId: user.userId, role: user.role } });
     } catch (err) {
         res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// 3. Get Student Subscriptions
+router.get('/subscriptions', auth, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+        res.json(user.subscriptions);
+    } catch (err) {
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// 4. Toggle Subscription to Educator
+router.put('/subscribe', auth, async (req, res) => {
+    try {
+        const { educatorId } = req.body;
+        if (!educatorId) return res.status(400).json({ error: 'Educator ID required' });
+
+        const user = await User.findById(req.user.id);
+        
+        if (user.role !== 'student') {
+            return res.status(403).json({ error: 'Only students can subscribe' });
+        }
+
+        // Check if already subscribed
+        const index = user.subscriptions.indexOf(educatorId);
+        if (index === -1) {
+            user.subscriptions.push(educatorId); // Subscribe
+        } else {
+            user.subscriptions.splice(index, 1); // Unsubscribe
+        }
+
+        await user.save();
+        res.json(user.subscriptions); // Return the updated array
+    } catch (err) {
+        res.status(500).json({ error: 'Subscription failed' });
     }
 });
 
