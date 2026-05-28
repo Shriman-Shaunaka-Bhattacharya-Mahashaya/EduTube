@@ -77,18 +77,28 @@ router.post('/upload', auth, (req, res) => {
     });
 });
 
-// 2. Student: Search by Tags
+// 2. Student: Flexible Search (Tag or Author)
 router.get('/search', async (req, res) => {
     try {
-        const { tag } = req.query;
+        const { tag, author } = req.query;
         let query = {};
+        
         if (tag) {
-            query.tags = tag.toLowerCase(); // Exact match as requested
+            query.tags = tag.toLowerCase(); // Exact match for tags
+        }
+        
+        if (author) {
+            // Case-insensitive partial match on either authorName or authorId
+            query.$or = [
+                { authorName: { $regex: author, $options: 'i' } },
+                { authorId: { $regex: author, $options: 'i' } }
+            ];
         }
         
         const media = await Media.find(query).sort({ timestamp: -1 });
         res.json(media);
     } catch (err) {
+        console.error(err);
         res.status(500).json({ error: 'Search failed' });
     }
 });
