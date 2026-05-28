@@ -67,30 +67,54 @@ router.get('/subscriptions', auth, async (req, res) => {
     }
 });
 
-// 4. Toggle Subscription to Educator
+// 4. Toggle Subscription to Educator (Upgraded for Dual-Write)
 router.put('/subscribe', auth, async (req, res) => {
     try {
         const { educatorId } = req.body;
         if (!educatorId) return res.status(400).json({ error: 'Educator ID required' });
 
-        const user = await User.findById(req.user.id);
+        const student = await User.findById(req.user.id);
         
-        if (user.role !== 'student') {
+        if (student.role !== 'student') {
             return res.status(403).json({ error: 'Only students can subscribe' });
         }
 
-        // Check if already subscribed
-        const index = user.subscriptions.indexOf(educatorId);
+        // Verify the educator actually exists
+        const educator = await User.findOne({ userId: educatorId, role: 'educator' });
+        if (!educator) return res.status(404).json({ error: 'Educator not found' });
+
+        const index = student.subscriptions.indexOf(educatorId);
+        
         if (index === -1) {
-            user.subscriptions.push(educatorId); // Subscribe
+            // Subscribe: Add to student's array, Increment educator's count
+            student.subscriptions.push(educatorId);
+            educator.subscriberCount += 1;
         } else {
-            user.subscriptions.splice(index, 1); // Unsubscribe
+            // Unsubscribe: Remove from student's array, Decrement educator's count
+            student.subscriptions.splice(index, 1);
+            educator.subscriberCount = Math.max(0, educator.subscriberCount - 1); // Prevent negative numbers
         }
 
-        await user.save();
-        res.json(user.subscriptions); // Return the updated array
+        // Save both documents
+        await student.save();
+        await educator.save();
+
+        res.json(student.subscriptions); 
     } catch (err) {
+        console.error(err);
         res.status(500).json({ error: 'Subscription failed' });
+    }
+});
+
+// 5. Get Current User Profile (Used by Educator Dashboard)
+router.get('/me', auth, async (req, res) => {
+    try {
+        // Find user and exclude the password hash from the response
+        const user = await User.findById(req.user.id).select('-password');
+        if (!user) return res.status(404).json({ error: 'User not found' });
+        res.json(user);
+    } catch (err) {
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
