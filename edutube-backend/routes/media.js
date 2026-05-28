@@ -22,35 +22,59 @@ const storage = new CloudinaryStorage({
         resource_type: 'auto'    // CRITICAL: 'auto' allows videos and PDFs. Default only allows images.
     }
 });
-const upload = multer({ storage });
+// Define the allowed file types
+const allowedTypes = ['video/mp4', 'application/pdf', 'image/jpeg', 'image/png', 'text/plain'];
 
-// 1. Educator: Upload Media to Cloud
-router.post('/upload', auth, upload.single('file'), async (req, res) => {
-    try {
-        const { name, authorName, authorId, tags } = req.body;
-        
-        if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-
-        const tagArray = tags ? tags.split(',').map(tag => tag.trim().toLowerCase()) : [];
-
-        // req.file.path now contains the secure Cloudinary URL
-        // req.file.filename contains the Cloudinary public_id
-        const newMedia = new Media({
-            name,
-            fileUrl: req.file.path,
-            publicId: req.file.filename, 
-            mimetype: req.file.mimetype,
-            authorName,
-            authorId,
-            tags: tagArray
-        });
-
-        await newMedia.save();
-        res.status(201).json(newMedia);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Upload failed' });
+const upload = multer({ 
+    storage,
+    limits: {
+        fileSize: 50 * 1024 * 1024 // 50 MB limit
+    },
+    fileFilter: (req, file, cb) => {
+        if (allowedTypes.includes(file.mimetype)) {
+            cb(null, true); // Accept the file
+        } else {
+            cb(new Error('Invalid file type. Only MP4, PDF, JPEG, PNG, and TXT are allowed.'), false); // Reject the file
+        }
     }
+});
+
+// 1. Educator: Upload Media to Cloud (Secured)
+router.post('/upload', auth, (req, res) => {
+    // Execute the multer middleware manually to catch its specific errors
+    upload.single('file')(req, res, async (err) => {
+        if (err) {
+            // Handle Multer limits and custom file type errors
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                return res.status(413).json({ error: 'File is too large. Maximum size is 50MB.' });
+            }
+            return res.status(400).json({ error: err.message });
+        }
+
+        try {
+            const { name, authorName, authorId, tags } = req.body;
+            
+            if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+            const tagArray = tags ? tags.split(',').map(tag => tag.trim().toLowerCase()) : [];
+
+            const newMedia = new Media({
+                name,
+                fileUrl: req.file.path,
+                publicId: req.file.filename, 
+                mimetype: req.file.mimetype,
+                authorName,
+                authorId,
+                tags: tagArray
+            });
+
+            await newMedia.save();
+            res.status(201).json(newMedia);
+        } catch (serverErr) {
+            console.error(serverErr);
+            res.status(500).json({ error: 'Database or server error during upload' });
+        }
+    });
 });
 
 // 2. Student: Search by Tags
