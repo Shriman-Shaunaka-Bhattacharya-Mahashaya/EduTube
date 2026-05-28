@@ -166,11 +166,21 @@ export default function StudentPortal({ user, token }) {
     setIsAsking(true);
 
     try {
-      const res = await axios.post(`http://localhost:5000/api/ai/ask/${mediaId}`, { question }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // 1. Grab the existing history BEFORE we added the new question to state
+      const existingHistory = chatHistories[mediaId] || [];
+
+      // 2. Send both the new question and the conversational context
+      const res = await axios.post(`http://localhost:5000/api/ai/ask/${mediaId}`, 
+        { 
+          question: question,
+          history: existingHistory 
+        }, 
+        { 
+          headers: { Authorization: `Bearer ${token}` } 
+        }
+      );
       
-      // Append the AI's response
+      // 3. Append the AI's response to the updated UI history
       setChatHistories(prev => ({
         ...prev,
         [mediaId]: [...updatedHistory, { role: 'ai', text: res.data.answer }]
@@ -186,16 +196,16 @@ export default function StudentPortal({ user, token }) {
   };
 
   return (
-    <div>
+    <div className="app-container">
       {/* Dynamic Dashboards */}
-      <div style={{ display: 'flex', gap: '15px', marginBottom: '20px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
         
         {subscriptions.length > 0 && (
-          <div style={{ flex: '1 1 30%', padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '5px', border: '1px solid #ddd' }}>
-            <h4 style={{ margin: '0 0 10px 0' }}>Educators I Follow</h4>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <div className="dashboard-bar dashboard-blue">
+            <h4 style={{ color: '#1e3a8a' }}>Educators I Follow</h4>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
               {subscriptions.map(subId => (
-                <button key={subId} onClick={() => executeSearch('educator', subId)} style={{ padding: '6px 10px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '15px', cursor: 'pointer', fontSize: '0.85em' }}>
+                <button key={subId} onClick={() => executeSearch('educator', subId)} className="btn btn-primary" style={{ borderRadius: 'var(--radius-full)' }}>
                   {subId}
                 </button>
               ))}
@@ -204,11 +214,11 @@ export default function StudentPortal({ user, token }) {
         )}
 
         {interests.length > 0 && (
-          <div style={{ flex: '1 1 30%', padding: '15px', backgroundColor: '#fdf9e3', borderRadius: '5px', border: '1px solid #f1c40f' }}>
-            <h4 style={{ margin: '0 0 10px 0' }}>My Saved Topics</h4>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <div className="dashboard-bar dashboard-yellow">
+            <h4 style={{ color: '#854d0e' }}>My Saved Topics</h4>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
               {interests.map(topic => (
-                <button key={topic} onClick={() => executeSearch('tag', topic)} style={{ padding: '6px 10px', backgroundColor: '#f39c12', color: 'white', border: 'none', borderRadius: '15px', cursor: 'pointer', fontSize: '0.85em' }}>
+                <button key={topic} onClick={() => executeSearch('tag', topic)} className="btn" style={{ backgroundColor: '#eab308', color: 'white', borderRadius: 'var(--radius-full)' }}>
                   {topic}
                 </button>
               ))}
@@ -217,16 +227,11 @@ export default function StudentPortal({ user, token }) {
         )}
 
         {savedMedia.length > 0 && (
-          <div style={{ flex: '1 1 30%', padding: '15px', backgroundColor: '#e8f5e9', borderRadius: '5px', border: '1px solid #4caf50' }}>
-            <h4 style={{ margin: '0 0 10px 0' }}>My Bookmarked Media</h4>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', flexDirection: 'column' }}>
+          <div className="dashboard-bar dashboard-green">
+            <h4 style={{ color: '#166534' }}>My Bookmarked Media</h4>
+            <div style={{ display: 'flex', gap: '8px', flexDirection: 'column', marginTop: '10px' }}>
               {savedMedia.map(item => (
-                <button 
-                  key={item.mediaId} 
-                  onClick={() => executeSearch('id', item.mediaId)} 
-                  style={{ padding: '6px 10px', backgroundColor: '#4caf50', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85em', textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                  title={item.name}
-                >
+                <button key={item.mediaId} onClick={() => executeSearch('id', item.mediaId)} className="btn btn-secondary" style={{ textAlign: 'left', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.name}>
                   ▶ {item.name}
                 </button>
               ))}
@@ -236,9 +241,9 @@ export default function StudentPortal({ user, token }) {
       </div>
 
       {/* Search Form */}
-      <div style={{ marginBottom: '20px' }}>
-        <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <select value={searchType} onChange={e => setSearchType(e.target.value)} style={{ padding: '8px' }}>
+      <div className="card" style={{ marginBottom: '2rem' }}>
+        <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <select value={searchType} onChange={e => setSearchType(e.target.value)} className="select-field" style={{ width: 'auto', minWidth: '150px' }}>
             <option value="tag">Search by Tag</option>
             <option value="educator">Search by Educator</option>
             <option value="ai">Ask AI (Natural Language)</option>
@@ -251,24 +256,24 @@ export default function StudentPortal({ user, token }) {
             } 
             value={searchQuery} 
             onChange={e => setSearchQuery(e.target.value)} 
-            style={{ padding: '8px', flexGrow: 1, maxWidth: '400px' }}
+            className="input-field"
+            style={{ flexGrow: 1 }}
           />
-          <button type="submit" style={{ padding: '8px 15px', cursor: 'pointer', backgroundColor: searchType === 'ai' ? '#8e44ad' : '#ecf0f1', color: searchType === 'ai' ? 'white' : 'black', border: '1px solid #ccc', fontWeight: searchType === 'ai' ? 'bold' : 'normal' }}>
+          <button type="submit" className={`btn ${searchType === 'ai' ? 'btn-primary' : 'btn-outline'}`} style={{ padding: '0.75rem 1.5rem', whiteSpace: 'nowrap' }}>
             {searchType === 'ai' ? '✨ AI Search' : 'Search'}
           </button>
         </form>
 
-        {/* AI Feedback Bar */}
         {aiInterpretation && (
-          <div style={{ marginTop: '10px', padding: '10px', backgroundColor: '#f4f0fa', color: '#6c3483', borderRadius: '5px', fontSize: '0.9em', borderLeft: '4px solid #8e44ad' }}>
+          <div style={{ marginTop: '1rem', padding: '0.75rem', backgroundColor: '#f5f3ff', color: '#6d28d9', borderRadius: 'var(--radius-md)', borderLeft: '4px solid #7c3aed', fontSize: '0.9rem', fontWeight: '500' }}>
             {aiInterpretation}
           </div>
         )}
-        {error && <p style={{ color: 'red', marginTop: '10px' }}>{error}</p>}
+        {error && <p style={{ color: 'var(--danger)', marginTop: '1rem', fontWeight: '500' }}>{error}</p>}
       </div>
 
       {/* Search Results */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+      <div className="media-grid">
         {results.map((media, index) => {
           const hasUpvoted = media.upvotedBy?.includes(user.userId);
           const isSubscribed = subscriptions.includes(media.authorId);
@@ -277,129 +282,92 @@ export default function StudentPortal({ user, token }) {
           const isChatActive = activeAiMediaId === media._id;
 
           return (
-            <div key={media._id} style={{ border: '1px solid #ccc', padding: '15px', borderRadius: '5px', position: 'relative', backgroundColor: isChatActive ? '#f8f9fc' : '#fff' }}>
+            <div key={media._id} className="card" style={{ position: 'relative', borderColor: isChatActive ? 'var(--primary)' : 'var(--border-color)' }}>
               
-              <button 
-                onClick={() => toggleSavedMedia(media._id, media.name)}
-                style={{ position: 'absolute', top: '15px', right: '15px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.5em', color: isSavedMedia ? '#4caf50' : '#ccc' }}
-                title={isSavedMedia ? "Remove Bookmark" : "Bookmark this Media"}
-              >
+              <button onClick={() => toggleSavedMedia(media._id, media.name)} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.5em', color: isSavedMedia ? 'var(--secondary)' : '#cbd5e1' }} title={isSavedMedia ? "Remove Bookmark" : "Bookmark this Media"}>
                 {isSavedMedia ? '🔖' : '📑'}
               </button>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', paddingRight: '40px' }}>
-                <div>
-                  <h4 style={{ margin: '0 0 5px 0' }}>{media.name}</h4>
-                  <p style={{ margin: 0, fontSize: '0.9em', color: '#555' }}>
-                    By: <strong>{media.authorName}</strong> ({media.authorId}) | Uploaded: {new Date(media.timestamp).toLocaleDateString()}
-                  </p>
-                </div>
-                <button 
-                  onClick={() => toggleSubscription(media.authorId)}
-                  style={{ padding: '5px 10px', backgroundColor: isSubscribed ? '#fff' : '#ff0000', color: isSubscribed ? '#ff0000' : '#fff', border: '1px solid #ff0000', borderRadius: '3px', cursor: 'pointer', fontWeight: 'bold' }}
-                >
-                  {isSubscribed ? 'Unsubscribe' : 'Subscribe'}
-                </button>
+              <div style={{ paddingRight: '2.5rem' }}>
+                <h4 style={{ fontSize: '1.1rem', marginBottom: '0.25rem', lineHeight: '1.3' }}>{media.name}</h4>
+                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                  By: <strong style={{ color: 'var(--text-main)' }}>{media.authorName}</strong> | {new Date(media.timestamp).toLocaleDateString()}
+                </p>
               </div>
 
-              <div style={{ margin: '10px 0', fontSize: '0.9em', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-                <strong>Tags:</strong>
+              <div style={{ marginTop: '1rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                 {media.tags && media.tags.length > 0 ? media.tags.map(tag => {
                   const isSaved = interests.includes(tag);
                   return (
-                    <span key={tag} style={{ display: 'flex', alignItems: 'center', backgroundColor: '#eee', padding: '3px 8px', borderRadius: '12px' }}>
+                    <span key={tag} className="tag-badge">
                       {tag}
-                      <button 
-                        onClick={() => toggleInterest(tag)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', marginLeft: '5px', color: isSaved ? '#f39c12' : '#999', fontSize: '1.2em' }}
-                      >
+                      <button onClick={() => toggleInterest(tag)} style={{ background: 'none', border: 'none', cursor: 'pointer', marginLeft: '4px', color: isSaved ? '#eab308' : '#94a3b8', fontSize: '1.1em', padding: '0' }}>
                         {isSaved ? '★' : '☆'}
                       </button>
                     </span>
                   );
-                }) : 'No tags'}
+                }) : <span className="tag-badge">No tags</span>}
               </div>
 
-              {/* Action Buttons Row */}
-              <div style={{ margin: '15px 0', display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <div style={{ margin: '1.5rem 0', borderRadius: 'var(--radius-md)', overflow: 'hidden', backgroundColor: '#000', display: 'flex', justifyContent: 'center' }}>
                 {media?.mimetype?.includes('video') ? (
-                  <video src={media.fileUrl} controls style={{ maxWidth: '100%', maxHeight: '400px' }} />
+                  <video src={media.fileUrl} controls style={{ width: '100%', maxHeight: '250px', objectFit: 'contain' }} />
                 ) : media?.mimetype?.includes('image') ? (
-                  <img src={media.fileUrl} alt={media?.name} style={{ maxWidth: '100%', maxHeight: '400px' }} />
+                  <img src={media.fileUrl} alt={media?.name} style={{ width: '100%', maxHeight: '250px', objectFit: 'cover' }} />
                 ) : (
-                  <a href={media.fileUrl} download={media?.name} target="_blank" rel="noreferrer"
-                     style={{ display: 'inline-block', padding: '8px 12px', backgroundColor: '#e0e0e0', color: '#000', border: '1px solid #ccc', borderRadius: '3px', textDecoration: 'none', cursor: 'pointer', fontSize: '13px' }}>
-                    Download / View File
-                  </a>
+                  <div style={{ backgroundColor: 'var(--bg-input)', width: '100%', padding: '2rem', textAlign: 'center' }}>
+                    <a href={media.fileUrl} download={media?.name} target="_blank" rel="noreferrer" className="btn btn-primary">
+                      View Document (PDF)
+                    </a>
+                  </div>
                 )}
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={() => handleUpvote(media._id, index)} className={`btn ${hasUpvoted ? 'btn-secondary' : 'btn-outline'}`}>
+                    ▲ {media.upvotes}
+                  </button>
+                  <button onClick={() => toggleSubscription(media.authorId)} className={`btn ${isSubscribed ? 'btn-outline' : 'btn-danger'}`} style={{ borderColor: isSubscribed ? 'var(--danger)' : '', color: isSubscribed ? 'var(--danger)' : '' }}>
+                    {isSubscribed ? 'Unsubscribe' : 'Subscribe'}
+                  </button>
+                </div>
                 
-                {/* Ask AI Button (Only for PDFs) */}
                 {isPdf && (
-                  <button 
-                    onClick={() => toggleAiChat(media)}
-                    style={{ padding: '8px 12px', backgroundColor: isChatActive ? '#e74c3c' : '#8e44ad', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold' }}
-                  >
+                  <button onClick={() => toggleAiChat(media)} className="btn btn-primary" style={{ background: isChatActive ? 'var(--danger)' : 'linear-gradient(135deg, var(--primary), #8b5cf6)' }}>
                     {isChatActive ? 'Close AI Tutor' : 'Ask AI Tutor ✨'}
                   </button>
                 )}
               </div>
 
-              <button 
-                onClick={() => handleUpvote(media._id, index)}
-                style={{ backgroundColor: hasUpvoted ? '#4CAF50' : '#f0f0f0', color: hasUpvoted ? 'white' : 'black', border: '1px solid #ccc', padding: '5px 10px', cursor: 'pointer' }}
-              >
-                {hasUpvoted ? 'Upvoted' : 'Upvote'} ({media.upvotes})
-              </button>
-
               {/* Embedded AI Chat UI */}
               {isChatActive && (
-                <div style={{ marginTop: '20px', border: '1px solid #bdc3c7', borderRadius: '5px', overflow: 'hidden', backgroundColor: '#fff' }}>
-                  <div style={{ backgroundColor: '#8e44ad', color: 'white', padding: '10px 15px', fontWeight: 'bold' }}>
-                    AI Tutor - {media.name}
-                  </div>
-                  
-                  <div style={{ padding: '15px', height: '250px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div className="ai-chat-container">
+                  <div className="ai-chat-header">AI Tutor - {media.name}</div>
+                  <div className="ai-chat-messages">
                     {isProcessingPdf ? (
-                      <div style={{ textAlign: 'center', color: '#7f8c8d', fontStyle: 'italic', marginTop: '20px' }}>
-                        🧠 Reading document and building knowledge base... this may take a moment...
+                      <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontStyle: 'italic', margin: 'auto' }}>
+                        🧠 Reading document and mapping vectors...
                       </div>
                     ) : (
                       <>
                         {chatHistories[media._id]?.map((msg, i) => (
-                          <div key={i} style={{ alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '80%', backgroundColor: msg.role === 'user' ? '#3498db' : '#ecf0f1', color: msg.role === 'user' ? 'white' : 'black', padding: '10px', borderRadius: '10px' }}>
-                            <strong style={{ display: 'block', fontSize: '0.8em', marginBottom: '5px', opacity: 0.8 }}>
+                          <div key={i} className={`chat-bubble ${msg.role === 'user' ? 'chat-user' : 'chat-ai'}`}>
+                            <strong style={{ display: 'block', fontSize: '0.75rem', marginBottom: '4px', opacity: 0.8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                               {msg.role === 'user' ? 'You' : 'AI Tutor'}
                             </strong>
                             <span style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</span>
                           </div>
                         ))}
-                        {isAsking && (
-                          <div style={{ alignSelf: 'flex-start', backgroundColor: '#ecf0f1', padding: '10px', borderRadius: '10px', fontStyle: 'italic', color: '#7f8c8d' }}>
-                            Thinking...
-                          </div>
-                        )}
+                        {isAsking && <div className="chat-bubble chat-ai" style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>Thinking...</div>}
                         <div ref={chatEndRef} />
                       </>
                     )}
                   </div>
-
                   {!isProcessingPdf && (
-                    <form onSubmit={(e) => handleSendAiMessage(e, media._id)} style={{ display: 'flex', borderTop: '1px solid #bdc3c7' }}>
-                      <input 
-                        type="text" 
-                        value={chatInput}
-                        onChange={(e) => setChatInput(e.target.value)}
-                        placeholder="Ask a question about this document..."
-                        disabled={isAsking}
-                        style={{ flexGrow: 1, padding: '10px', border: 'none', outline: 'none' }}
-                      />
-                      <button 
-                        type="submit" 
-                        disabled={isAsking || !chatInput.trim()}
-                        style={{ padding: '0 20px', backgroundColor: '#2ecc71', color: 'white', border: 'none', cursor: isAsking || !chatInput.trim() ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}
-                      >
-                        Send
-                      </button>
+                    <form onSubmit={(e) => handleSendAiMessage(e, media._id)} style={{ display: 'flex', borderTop: '1px solid var(--border-color)', background: 'white', padding: '0.5rem' }}>
+                      <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Ask a question..." disabled={isAsking} className="input-field" style={{ border: 'none', boxShadow: 'none', background: 'transparent' }} />
+                      <button type="submit" disabled={isAsking || !chatInput.trim()} className="btn btn-secondary" style={{ marginLeft: '0.5rem' }}>Send</button>
                     </form>
                   )}
                 </div>

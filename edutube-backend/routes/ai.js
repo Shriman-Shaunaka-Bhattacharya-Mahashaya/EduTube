@@ -85,16 +85,17 @@ router.post('/process/:mediaId', auth, async (req, res) => {
     }
 });
 
-// 2. Ask the AI a Question
+// 2. Ask the AI a Question (WITH CONVERSATIONAL MEMORY)
 router.post('/ask/:mediaId', auth, async (req, res) => {
     try {
-        const { question } = req.body;
+        // 1. Extract both the question AND the chat history from the frontend
+        const { question, history = [] } = req.body;
         if (!question) return res.status(400).json({ error: 'Question is required' });
 
-        // 1. Convert the student's question into math
+        // 2. Convert the student's question into math
         const questionEmbedding = await generateEmbedding(question);
 
-        // 2. Search MongoDB for the 3 most mathematically similar text chunks
+        // 3. Search MongoDB for the 3 most mathematically similar text chunks
         const results = await DocumentChunk.aggregate([
             {
                 $vectorSearch: {
@@ -115,23 +116,33 @@ router.post('/ask/:mediaId', auth, async (req, res) => {
             return res.status(400).json({ error: 'No context found. Ensure the PDF is processed first.' });
         }
 
-        // 3. Assemble the context
+        // 4. Assemble the context
         const context = results.map(r => r.text).join('\n\n---\n\n');
 
-        // 4. Send to Groq Llama 3
+        // 5. Format the frontend history for the Groq API
+        // Groq uses 'user' and 'assistant' roles. We map our frontend roles to Groq's schema.
+        const formattedHistory = history
+            .filter(msg => msg.text !== 'I have read this document! What would you like to know about it?') // Don't waste tokens on our hardcoded intro
+            .map(msg => ({
+                role: msg.role === 'ai' ? 'assistant' : 'user',
+                content: msg.text
+            }));
+
+        // 6. Send to Groq Llama 3 with stateful prompt
         const chatCompletion = await groq.chat.completions.create({
             messages: [
                 {
                     role: 'system',
                     content: `You are an educational AI assistant. Answer the student's question ONLY using the provided context. If the answer is not in the context, say "I cannot find the answer to this in the document."\n\nCONTEXT:\n${context}`
                 },
+                ...formattedHistory, // Inject the previous conversation here
                 {
                     role: 'user',
-                    content: question
+                    content: question // The new question
                 }
             ],
             model: 'llama-3.1-8b-instant',
-            temperature: 0.1, // Keep it strictly factual
+            temperature: 0.3, // Slight creativity for conversational flow, but strict enough for facts
         });
 
         res.json({ answer: chatCompletion.choices[0].message.content });
