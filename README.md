@@ -1,14 +1,15 @@
 # EduTube 🎓🤖
-**An AI-Powered Educational Media Platform with Local RAG & Intent Routing**
+**An AI-Powered Educational Media Platform with Local RAG, Intent Routing & Conversational Memory**
 
-EduTube is a full-stack role-based learning platform. It allows educators to host secure, cloud-delivered content while empowering students with a custom-built AI Tutor. The platform features a zero-cost local embedding pipeline, MongoDB Atlas Vector Search, and a natural language routing agent powered by Llama 3.1.
+EduTube is a full-stack role-based learning platform. It allows educators to host secure, cloud-delivered content while empowering students with a custom-built AI Tutor. The platform features a zero-cost local embedding pipeline, MongoDB Atlas Vector Search, a natural language routing agent, and a modern, scalable design system.
 
 ---
 
 ## 🚀 Architectural Highlights
 
 * **Zero-Cost RAG Pipeline:** Generates 384-dimensional vector embeddings locally within the Node.js process using `@xenova/transformers` (`all-MiniLM-L6-v2`), eliminating the need for paid embedding APIs.
-* **Agentic Search Routing:** Replaces standard database querying with an AI routing layer. Natural language queries (e.g., "I need help with Java arrays") are processed by Groq's Llama 3.1 to extract intent, dynamically constructing complex MongoDB regex queries on the fly.
+* **Agentic Search Routing & Full-Text Search:** Replaces standard database querying with an AI routing layer. Natural language queries are processed by Groq's Llama 3.1 to extract intent, dynamically mapping to MongoDB Native Full-Text Search (inverted indexes) for O(1) linguistically-aware lookups (stemming), avoiding expensive O(N) regex collection scans.
+* **Stateful Conversational Memory:** Bypasses the stateless nature of LLMs by maintaining a rolling conversational window on the client, streaming historical context back to the backend to enable multi-turn, pronoun-aware interactions with the AI Tutor.
 * **Cascading Teardowns:** Deleting media triggers a highly optimized concurrent teardown, simultaneously wiping the MongoDB document, purging orphaned vector data from the Atlas Search index, and destroying the physical file on the Cloudinary CDN to prevent storage bloat.
 * **Dual-Write Denormalization:** User metrics (like subscriber counts and bookmarked metadata) are strategically denormalized across collections to prevent expensive `$in` array lookups and pipeline bottlenecks on dashboard load.
 
@@ -16,11 +17,11 @@ EduTube is a full-stack role-based learning platform. It allows educators to hos
 
 ## 🛠️ Tech Stack
 
-**Frontend:** React.js, Vite, Axios
+**Frontend:** React.js, Vite, Axios, Scalable CSS Variable Architecture
 
 **Backend:** Node.js, Express.js
 
-**Database:** MongoDB Atlas (Document Store & Native Vector Search Engine)
+**Database:** MongoDB Atlas (Document Store, Native Vector Search, & Full-Text Indexes)
 
 **Storage / CDN:** Cloudinary, Multer
 
@@ -44,7 +45,7 @@ EduTube is a full-stack role-based learning platform. It allows educators to hos
 
 ### 🧠 Embedded AI Tutor
 * **PDF Knowledge Base:** The backend downloads Cloudinary PDFs into memory buffers, chunks the text, and maps the vectors to the Atlas index.
-* **Contextual Chat:** Students can query the document in real-time. The AI is strictly prompted to ground its answers exclusively in the retrieved mathematical context.
+* **Multi-Turn Chat:** Students can query the document in real-time. The AI is strictly prompted to ground its answers exclusively in the retrieved mathematical context while maintaining awareness of previous questions.
 
 ---
 
@@ -61,16 +62,16 @@ CLOUDINARY_API_SECRET=your_api_secret
 GROQ_API_KEY=your_groq_api_key
 
 ### 2. Install Dependencies
-# Backend
+### Backend
 cd edutube-backend
 npm install
 
-# Frontend
+### Frontend
 cd edutube-frontend
 npm install
 
 ### 3. Provision the Atlas Vector Index (Critical)
-To enable the RAG pipeline, you must manually create a Vector Search Index in your MongoDB Atlas dashboard.
+To enable the RAG pipeline, you must manually create a Vector Search Index in your MongoDB Atlas dashboard. (Note: The standard Full-Text Index is built automatically by Mongoose on startup).
 1. Target the `documentchunks` collection.
 2. Create an **Atlas Search Index** using the JSON Editor.
 3. Name it exactly: `vector_index`
@@ -91,8 +92,8 @@ To enable the RAG pipeline, you must manually create a Vector Search Index in yo
 }
 
 ### 4. Boot the Application
-# Start the backend API
+### Start the backend API
 npm run dev
 
-# Start the Vite frontend
+### Start the Vite frontend
 npm run dev
