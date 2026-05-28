@@ -6,7 +6,8 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: true },
     role: { type: String, enum: ['educator', 'student'], required: true },
     subscriptions: [{ type: String, default: [] }], 
-    subscriberCount: { type: Number, default: 0 }, // NEW FIELD
+    subscriberCount: { type: Number, default: 0 }, 
+    interests: [{ type: String, default: [] }], // NEW FIELD
     createdAt: { type: Date, default: Date.now }
 });
 

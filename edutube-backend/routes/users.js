@@ -118,4 +118,44 @@ router.get('/me', auth, async (req, res) => {
     }
 });
 
+// 6. Get Student Interests
+router.get('/interests', auth, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+        res.json(user.interests || []);
+    } catch (err) {
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// 7. Toggle Interest (Saved Topic)
+router.put('/interest', auth, async (req, res) => {
+    try {
+        const { topic } = req.body;
+        if (!topic) return res.status(400).json({ error: 'Topic required' });
+
+        const user = await User.findById(req.user.id);
+        
+        if (user.role !== 'student') {
+            return res.status(403).json({ error: 'Only students can save interests' });
+        }
+
+        const normalizedTopic = topic.trim().toLowerCase();
+        const index = user.interests.indexOf(normalizedTopic);
+        
+        if (index === -1) {
+            user.interests.push(normalizedTopic); // Save it
+        } else {
+            user.interests.splice(index, 1); // Remove it
+        }
+
+        await user.save();
+        res.json(user.interests); 
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to toggle interest' });
+    }
+});
+
 module.exports = router;
