@@ -94,94 +94,113 @@ export default function EducatorDashboard({ user, token }) {
   };
 
   return (
-    <div>
+    <div className="app-container">
+      
       {/* Educator Stats Dashboard */}
-      <div style={{ backgroundColor: '#2c3e50', color: 'white', padding: '20px', borderRadius: '8px', marginBottom: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="card" style={{ backgroundColor: 'var(--dark)', color: 'var(--text-light)', marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h2 style={{ margin: '0 0 5px 0' }}>Welcome, {user.userId}</h2>
-          <p style={{ margin: 0, color: '#bdc3c7' }}>Educator Dashboard</p>
+          <h2 style={{ margin: '0 0 5px 0', color: 'var(--text-light)' }}>Welcome, {user.userId}</h2>
+          <p style={{ margin: 0, color: '#94a3b8' }}>Educator Dashboard</p>
         </div>
-        <div style={{ textAlign: 'center', backgroundColor: '#34495e', padding: '15px 30px', borderRadius: '5px' }}>
-          <h1 style={{ margin: '0', fontSize: '2.5em', color: '#3498db' }}>{profile?.subscriberCount || 0}</h1>
-          <p style={{ margin: '5px 0 0 0', textTransform: 'uppercase', fontSize: '0.8em', letterSpacing: '1px' }}>Subscribers</p>
+        <div style={{ textAlign: 'center', backgroundColor: 'rgba(255, 255, 255, 0.1)', padding: '1rem 2rem', borderRadius: 'var(--radius-md)' }}>
+          <h1 style={{ margin: '0', fontSize: '2.5em', color: '#60a5fa' }}>{profile?.subscriberCount || 0}</h1>
+          <p style={{ margin: '5px 0 0 0', textTransform: 'uppercase', fontSize: '0.8em', letterSpacing: '1px', color: 'var(--text-light)' }}>Subscribers</p>
         </div>
       </div>
 
-      <div style={{ paddingBottom: '30px', borderBottom: '2px solid #eee', marginBottom: '30px' }}>
-        <h3>Upload New Media</h3>
-        <form onSubmit={handleUpload} style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '400px' }}>
-          <input type="file" onChange={e => setFile(e.target.files[0])} required />
-          <input type="text" placeholder="Media Name" value={name} onChange={e => setName(e.target.value)} required />
-          <input type="text" placeholder="Tags (comma separated)" value={tags} onChange={e => setTags(e.target.value)} required />
-          <button type="submit" style={{ padding: '10px', cursor: 'pointer', backgroundColor: '#3498db', color: 'white', border: 'none', borderRadius: '4px' }}>Upload Content</button>
+      {/* Upload New Media */}
+      <div className="card" style={{ marginBottom: '2.5rem' }}>
+        <h3 style={{ marginBottom: '1.5rem', color: 'var(--dark)' }}>Upload New Media</h3>
+        <form onSubmit={handleUpload} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxWidth: '500px' }}>
+          <input 
+            type="file" 
+            className="input-field"
+            onChange={e => setFile(e.target.files[0])} 
+            style={{ padding: '0.5rem', background: 'var(--bg-input)' }}
+            required 
+          />
+          <input 
+            type="text" 
+            className="input-field"
+            placeholder="Media Name" 
+            value={name} 
+            onChange={e => setName(e.target.value)} 
+            required 
+          />
+          <input 
+            type="text" 
+            className="input-field"
+            placeholder="Tags (comma separated)" 
+            value={tags} 
+            onChange={e => setTags(e.target.value)} 
+            required 
+          />
+          <button type="submit" className="btn btn-primary" style={{ padding: '0.75rem', fontSize: '1rem', marginTop: '0.5rem' }}>
+            Upload Content
+          </button>
         </form>
-        {status && <p style={{ marginTop: '10px', fontWeight: 'bold' }}>{status}</p>}
+        {status && (
+          <p style={{ marginTop: '1rem', fontWeight: '500', color: status.toLowerCase().includes('failed') ? 'var(--danger)' : 'var(--secondary)' }}>
+            {status}
+          </p>
+        )}
       </div>
 
+      {/* My Uploaded Media */}
       <div>
-        <h3>My Uploaded Media</h3>
+        <h3 style={{ marginBottom: '1.5rem', color: 'var(--dark)' }}>My Uploaded Media</h3>
         {myMedia.length === 0 ? (
-          <p style={{ color: '#777' }}>You haven't uploaded anything yet.</p>
+          <div className="card" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+            <p style={{ fontSize: '1.1rem' }}>You haven't uploaded anything yet.</p>
+          </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div className="media-grid">
             {myMedia.map(media => (
-              <div key={media._id} style={{ border: '1px solid #ccc', padding: '15px', borderRadius: '5px', backgroundColor: '#fafafa', position: 'relative' }}>
+              <div key={media._id} className="card" style={{ position: 'relative', display: 'flex', flexDirection: 'column' }}>
                 
                 {/* Destructive Delete Button */}
                 <button 
                   onClick={() => handleDelete(media._id)}
-                  style={{
-                    position: 'absolute',
-                    top: '15px',
-                    right: '15px',
-                    backgroundColor: '#e74c3c',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '3px',
-                    padding: '6px 12px',
-                    cursor: 'pointer',
-                    fontWeight: 'bold',
-                    fontSize: '0.85em'
-                  }}
+                  className="btn btn-danger"
+                  style={{ position: 'absolute', top: '1rem', right: '1rem', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
+                  title="Permanently delete this media and its AI knowledge base"
                 >
                   Delete Media
                 </button>
 
-                <h4 style={{ margin: '0 0 10px 0', paddingRight: '100px' }}>{media.name}</h4>
-                
-                <div style={{ fontSize: '0.9em', color: '#555', display: 'flex', gap: '20px' }}>
-                  <span><strong>Type:</strong> {media.mimetype.split('/')[0]}</span>
-                  <span><strong>Upvotes:</strong> {media.upvotes}</span>
-                  <span><strong>Uploaded:</strong> {new Date(media.timestamp).toLocaleDateString()}</span>
+                <div style={{ paddingRight: '7rem' }}>
+                  <h4 style={{ fontSize: '1.15rem', marginBottom: '0.5rem', lineHeight: '1.4' }}>{media.name}</h4>
+                  
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
+                    <span style={{ backgroundColor: 'var(--bg-input)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
+                      <strong>Type:</strong> {media.mimetype.split('/')[0]}
+                    </span>
+                    <span style={{ backgroundColor: 'var(--bg-input)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
+                      <strong>Upvotes:</strong> {media.upvotes}
+                    </span>
+                    <span style={{ backgroundColor: 'var(--bg-input)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
+                      <strong>Uploaded:</strong> {new Date(media.timestamp).toLocaleDateString()}
+                    </span>
+                  </div>
                 </div>
                 
-                <p style={{ margin: '10px 0', fontSize: '0.9em' }}><strong>Tags:</strong> {media.tags.join(', ')}</p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1.5rem' }}>
+                  {media.tags && media.tags.length > 0 ? media.tags.map(tag => (
+                    <span key={tag} className="tag-badge">{tag}</span>
+                  )) : <span className="tag-badge">No tags</span>}
+                </div>
 
-                <div style={{ margin: '15px 0' }}>
+                <div style={{ marginTop: 'auto', borderRadius: 'var(--radius-md)', overflow: 'hidden', backgroundColor: '#000', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                   {media?.mimetype?.includes('video') ? (
-                    <video src={`${media.fileUrl}?t=${Date.now()}`} controls style={{ maxWidth: '100%', maxHeight: '400px' }} />
+                    <video src={`${media.fileUrl}?t=${new Date(media.timestamp).getTime()}`} controls style={{ width: '100%', maxHeight: '200px', objectFit: 'contain' }} />
                   ) : media?.mimetype?.includes('image') ? (
-                    <img src={media.fileUrl} alt={media?.name} style={{ maxWidth: '100%', maxHeight: '400px' }} />
+                    <img src={media.fileUrl} alt={media?.name} style={{ width: '100%', maxHeight: '200px', objectFit: 'cover' }} />
                   ) : (
-                    <a 
-                      href={media.fileUrl} 
-                      download={media?.name} 
-                      target="_blank" 
-                      rel="noreferrer"
-                      style={{ 
-                        display: 'inline-block',
-                        padding: '8px 12px', 
-                        backgroundColor: '#e0e0e0',
-                        color: '#000',
-                        border: '1px solid #ccc',
-                        borderRadius: '3px',
-                        textDecoration: 'none',
-                        cursor: 'pointer',
-                        fontSize: '13px'
-                      }}
-                    >
-                      Download / View File
-                    </a>
+                    <div style={{ backgroundColor: 'var(--bg-input)', width: '100%', padding: '2rem', textAlign: 'center', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <a href={media.fileUrl} download={media?.name} target="_blank" rel="noreferrer" className="btn btn-secondary">
+                        Download / View File
+                      </a>
+                    </div>
                   )}
                 </div>
               </div>
