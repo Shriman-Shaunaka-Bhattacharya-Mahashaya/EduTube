@@ -176,9 +176,14 @@ Examples:
 
         // 3. Execute the database search based on the AI's logic
         let dbQuery = {};
+        let sortConfig = { timestamp: -1 };
+        let projection = {};
+
         if (aiDecision.type === 'tag') {
-            // Use regex so "java" matches "java arrays"
-            dbQuery.tags = { $regex: aiDecision.value, $options: 'i' };
+            // Apply the new text indexing here as well
+            dbQuery.$text = { $search: aiDecision.value };
+            projection = { score: { $meta: "textScore" } };
+            sortConfig = { score: { $meta: "textScore" } };
         } else if (aiDecision.type === 'author') {
             dbQuery.$or = [
                 { authorName: { $regex: aiDecision.value, $options: 'i' } },
@@ -186,7 +191,7 @@ Examples:
             ];
         }
 
-        const media = await Media.find(dbQuery).sort({ timestamp: -1 });
+        const media = await Media.find(dbQuery, projection).sort(sortConfig);
         
         res.json({ 
             results: media, 

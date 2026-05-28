@@ -14,4 +14,7 @@ const mediaSchema = new mongoose.Schema({
     timestamp: { type: Date, default: Date.now }
 });
 
+// NEW: Create a Text Index for stemming and hyper-fast searches
+mediaSchema.index({ tags: 'text', name: 'text' });
+
 module.exports = mongoose.model('Media', mediaSchema);

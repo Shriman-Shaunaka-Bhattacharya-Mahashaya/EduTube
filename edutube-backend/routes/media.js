@@ -78,29 +78,39 @@ router.post('/upload', auth, (req, res) => {
     });
 });
 
-// 2. Student: Flexible Search (Tag, Author, or Exact ID)
+// 2. Student: Flexible Search (Tag/Name Text Search, Author Regex, or Exact ID)
 router.get('/search', async (req, res) => {
     try {
         const { tag, author, id } = req.query;
         let query = {};
         
-        // Add ID exact match support
         if (id) {
             query._id = id;
         }
         
         if (tag) {
-            query.tags = tag.toLowerCase(); 
+            // Replaces strict/regex matching with native Full-Text stemming search
+            query.$text = { $search: tag }; 
         }
         
         if (author) {
+            // Keep regex here: stemming does not apply to usernames (e.g. "prof_roy" vs "prof_roys")
             query.$or = [
                 { authorName: { $regex: author, $options: 'i' } },
                 { authorId: { $regex: author, $options: 'i' } }
             ];
         }
         
-        const media = await Media.find(query).sort({ timestamp: -1 });
+        // If searching by text, optionally sort by text score relevance instead of just timestamp
+        let sortConfig = { timestamp: -1 };
+        let projection = {};
+        
+        if (tag) {
+            projection = { score: { $meta: "textScore" } };
+            sortConfig = { score: { $meta: "textScore" } };
+        }
+
+        const media = await Media.find(query, projection).sort(sortConfig);
         res.json(media);
     } catch (err) {
         console.error(err);
