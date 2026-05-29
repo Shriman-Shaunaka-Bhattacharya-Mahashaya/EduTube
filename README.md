@@ -34,16 +34,31 @@ EduTube is a full-stack role-based learning platform. It allows educators to hos
 ## ⚙️ Core Features
 
 ### 👨‍🏫 Educator Portal
+
+![Educator_Dashboard_1](.\images\EducatorDashboard_1.png)
+
+![Educator_Dashboard_2](.\images\EducatorDashboard_2.png)
+
 * **CDN Integration:** Upload videos, images, and PDFs securely to Cloudinary.
 * **Analytics:** Real-time subscriber tracking powered by dual-write database operations.
 * **Lifecycle Management:** Complete CRUD control with cascading system cleanup.
 
 ### 🎓 Student Portal
+
+![Student_Dashboard_1](.\images\StudentDashboard_1.png)
+
+![Student_Dashboard_2](.\images\StudentDashboard_2.png)
+
+
 * **Dynamic Dashboards:** Track subscribed educators, saved topics, and bookmarked media for hyper-fast `_id` retrieval.
 * **Interactive Media:** Upvote content, download files, and stream videos directly.
 * **Dual-State Search:** Toggle between strict database filtering and AI natural language intent routing.
 
 ### 🧠 Embedded AI Tutor
+
+![AI_Chat](.\images\AI_Chat.png)
+
+
 * **PDF Knowledge Base:** The backend downloads Cloudinary PDFs into memory buffers, chunks the text, and maps the vectors to the Atlas index.
 * **Multi-Turn Chat:** Students can query the document in real-time. The AI is strictly prompted to ground its answers exclusively in the retrieved mathematical context while maintaining awareness of previous questions.
 
