@@ -6,8 +6,9 @@ module.exports = function(req, res, next) {
     const authHeader = req.header('Authorization');
     if (!authHeader) return res.status(401).json({ error: 'No token, authorization denied' });
 
-    const token = authHeader.split(' ')[1];
-    if (!token) return res.status(401).json({ error: 'Malformed token' });
+    const parts = authHeader.split(' ');
+    const token = parts[1];
+    if (parts.length !== 2 || parts[0] !== 'Bearer' || !token) return res.status(401).json({ error: 'Malformed token' });
 
     try {
         // Verify the token using your secret key

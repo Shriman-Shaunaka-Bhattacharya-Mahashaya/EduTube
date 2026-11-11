@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
 export default function StudentPortal({ user, token }) {
+  const [searching, setSearching] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState('tag');
   const [results, setResults] = useState([]);
@@ -22,7 +24,7 @@ export default function StudentPortal({ user, token }) {
   // Auto-scroll chat to bottom
   useEffect(() => {
     if (chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      chatEndRef.current.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
     }
   }, [chatHistories, activeAiMediaId]);
 
@@ -48,6 +50,9 @@ export default function StudentPortal({ user, token }) {
   const executeSearch = async (type, query) => {
     if (!query.trim()) return setError('Please enter a search term.');
     setError('');
+    setSearching(true);
+    setHasSearched(true);
+    setResults([]);
     setAiInterpretation(''); // Reset interpretation on new search
     setSearchType(type === 'id' ? 'tag' : type); 
     setSearchQuery(type === 'id' ? '' : query); 
@@ -65,17 +70,17 @@ export default function StudentPortal({ user, token }) {
       } else {
         // --- STANDARD ROUTING ---
         let endpoint = `http://localhost:5000/api/media/search?`;
-        if (type === 'tag') endpoint += `tag=${query.trim()}`;
-        if (type === 'educator') endpoint += `author=${query.trim()}`;
-        if (type === 'id') endpoint += `id=${query.trim()}`;
+        if (type === 'tag') endpoint += `tag=${encodeURIComponent(query.trim())}`;
+        if (type === 'educator') endpoint += `author=${encodeURIComponent(query.trim())}`;
+        if (type === 'id') endpoint += `id=${encodeURIComponent(query.trim())}`;
 
         const res = await axios.get(endpoint);
         setResults(res.data);
         if (res.data.length === 0) setError(`No media found.`);
       }
-    } catch (err) {
-      setError('Search failed.');
-    }
+    } catch {
+      setError('Search failed. Please try again.');
+    } finally { setSearching(false); }
   };
 
   const handleSearchSubmit = (e) => {
@@ -142,7 +147,7 @@ export default function StudentPortal({ user, token }) {
           ...prev,
           [media._id]: [{ role: 'ai', text: 'I have read this document! What would you like to know about it?' }]
         }));
-      } catch (err) {
+      } catch {
         setChatHistories(prev => ({
           ...prev,
           [media._id]: [{ role: 'ai', text: 'Sorry, I failed to process this document.' }]
@@ -185,7 +190,7 @@ export default function StudentPortal({ user, token }) {
         ...prev,
         [mediaId]: [...updatedHistory, { role: 'ai', text: res.data.answer }]
       }));
-    } catch (err) {
+    } catch {
       setChatHistories(prev => ({
         ...prev,
         [mediaId]: [...updatedHistory, { role: 'ai', text: 'An error occurred while fetching the answer. Please try again.' }]
@@ -197,12 +202,13 @@ export default function StudentPortal({ user, token }) {
 
   return (
     <div className="app-container">
+      <div className="page-heading"><h1>What will you discover today?</h1><p>Explore a topic, find an educator, or let AI help you find your next lesson.</p></div>
       {/* Dynamic Dashboards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
         
         {subscriptions.length > 0 && (
           <div className="dashboard-bar dashboard-blue">
-            <h4 style={{ color: '#1e3a8a' }}>Educators I Follow</h4>
+            <h4 style={{ color: 'var(--text-main)' }}>Educators I Follow</h4>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
               {subscriptions.map(subId => (
                 <button key={subId} onClick={() => executeSearch('educator', subId)} className="btn btn-primary" style={{ borderRadius: 'var(--radius-full)' }}>
@@ -215,10 +221,10 @@ export default function StudentPortal({ user, token }) {
 
         {interests.length > 0 && (
           <div className="dashboard-bar dashboard-yellow">
-            <h4 style={{ color: '#854d0e' }}>My Saved Topics</h4>
+            <h4 style={{ color: 'var(--text-main)' }}>My Saved Topics</h4>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
               {interests.map(topic => (
-                <button key={topic} onClick={() => executeSearch('tag', topic)} className="btn" style={{ backgroundColor: '#eab308', color: 'white', borderRadius: 'var(--radius-full)' }}>
+                <button key={topic} onClick={() => executeSearch('tag', topic)} className="btn" style={{ backgroundColor: 'var(--accent-soft)', color: 'var(--primary)', borderRadius: 'var(--radius-full)' }}>
                   {topic}
                 </button>
               ))}
@@ -228,7 +234,7 @@ export default function StudentPortal({ user, token }) {
 
         {savedMedia.length > 0 && (
           <div className="dashboard-bar dashboard-green">
-            <h4 style={{ color: '#166534' }}>My Bookmarked Media</h4>
+            <h4 style={{ color: 'var(--text-main)' }}>My Bookmarked Media</h4>
             <div style={{ display: 'flex', gap: '8px', flexDirection: 'column', marginTop: '10px' }}>
               {savedMedia.map(item => (
                 <button key={item.mediaId} onClick={() => executeSearch('id', item.mediaId)} className="btn btn-secondary" style={{ textAlign: 'left', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.name}>
@@ -242,14 +248,14 @@ export default function StudentPortal({ user, token }) {
 
       {/* Search Form */}
       <div className="card" style={{ marginBottom: '2rem' }}>
-        <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <select value={searchType} onChange={e => setSearchType(e.target.value)} className="select-field" style={{ width: 'auto', minWidth: '150px' }}>
+        <form onSubmit={handleSearchSubmit} className="search-form">
+          <select aria-label="Search method" disabled={searching} value={searchType} onChange={e => setSearchType(e.target.value)} className="select-field" style={{ width: 'auto', minWidth: '150px' }}>
             <option value="tag">Search by Tag</option>
             <option value="educator">Search by Educator</option>
             <option value="ai">Ask AI (Natural Language)</option>
           </select>
           <input 
-            type="text" 
+            type="text" aria-label="Search lessons" disabled={searching}
             placeholder={
               searchType === 'ai' ? "e.g., I want to learn about java arrays..." :
               searchType === 'tag' ? "e.g., react" : "e.g., prof_roy"
@@ -259,19 +265,21 @@ export default function StudentPortal({ user, token }) {
             className="input-field"
             style={{ flexGrow: 1 }}
           />
-          <button type="submit" className={`btn ${searchType === 'ai' ? 'btn-primary' : 'btn-outline'}`} style={{ padding: '0.75rem 1.5rem', whiteSpace: 'nowrap' }}>
+          <button disabled={searching} type="submit" className={`btn ${searchType === 'ai' ? 'btn-primary' : 'btn-outline'}`} style={{ padding: '0.75rem 1.5rem', whiteSpace: 'nowrap' }}>
             {searchType === 'ai' ? '✨ AI Search' : 'Search'}
           </button>
         </form>
 
         {aiInterpretation && (
-          <div style={{ marginTop: '1rem', padding: '0.75rem', backgroundColor: '#f5f3ff', color: '#6d28d9', borderRadius: 'var(--radius-md)', borderLeft: '4px solid #7c3aed', fontSize: '0.9rem', fontWeight: '500' }}>
+          <div style={{ marginTop: '1rem', padding: '0.75rem', backgroundColor: 'var(--accent-soft)', color: 'var(--primary)', borderRadius: 'var(--radius-md)',  fontSize: '0.9rem', fontWeight: '500' }}>
             {aiInterpretation}
           </div>
         )}
-        {error && <p style={{ color: 'var(--danger)', marginTop: '1rem', fontWeight: '500' }}>{error}</p>}
+        {error && <p role="alert" style={{ color: 'var(--danger)', marginTop: '1rem', fontWeight: '500' }}>{error}</p>}
       </div>
 
+      {!results.length && !error && <div className="empty-state" role="status"><h3>{searching ? 'Finding your next lesson?' : hasSearched ? 'No lessons found' : 'Your learning starts here'}</h3><p>{searching ? 'This may take a moment.' : 'Search for a subject you?re curious about, like React or mathematics.'}</p></div>}
+      {results.length > 0 && <h3>{results.length} {results.length === 1 ? 'resource' : 'resources'} to explore</h3>}
       {/* Search Results */}
       <div className="media-grid">
         {results.map((media, index) => {
@@ -301,7 +309,7 @@ export default function StudentPortal({ user, token }) {
                   return (
                     <span key={tag} className="tag-badge">
                       {tag}
-                      <button onClick={() => toggleInterest(tag)} style={{ background: 'none', border: 'none', cursor: 'pointer', marginLeft: '4px', color: isSaved ? '#eab308' : '#94a3b8', fontSize: '1.1em', padding: '0' }}>
+                      <button aria-label={`${isSaved ? "Unsave" : "Save"} topic ${tag}`} onClick={() => toggleInterest(tag)} style={{ background: 'none', border: 'none', cursor: 'pointer', marginLeft: '4px', color: isSaved ? '#eab308' : '#94a3b8', fontSize: '1.1em', padding: '0' }}>
                         {isSaved ? '★' : '☆'}
                       </button>
                     </span>
@@ -334,7 +342,7 @@ export default function StudentPortal({ user, token }) {
                 </div>
                 
                 {isPdf && (
-                  <button onClick={() => toggleAiChat(media)} className="btn btn-primary" style={{ background: isChatActive ? 'var(--danger)' : 'linear-gradient(135deg, var(--primary), #8b5cf6)' }}>
+                  <button onClick={() => toggleAiChat(media)} className="btn btn-primary" style={{ background: isChatActive ? 'var(--danger)' : 'var(--primary)' }}>
                     {isChatActive ? 'Close AI Tutor' : 'Ask AI Tutor ✨'}
                   </button>
                 )}
@@ -365,8 +373,8 @@ export default function StudentPortal({ user, token }) {
                     )}
                   </div>
                   {!isProcessingPdf && (
-                    <form onSubmit={(e) => handleSendAiMessage(e, media._id)} style={{ display: 'flex', borderTop: '1px solid var(--border-color)', background: 'white', padding: '0.5rem' }}>
-                      <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Ask a question..." disabled={isAsking} className="input-field" style={{ border: 'none', boxShadow: 'none', background: 'transparent' }} />
+                    <form onSubmit={(e) => handleSendAiMessage(e, media._id)} style={{ display: 'flex', borderTop: '1px solid var(--border-color)', background: 'var(--bg-card)', padding: '0.5rem' }}>
+                      <input type="text" aria-label="Question for AI tutor" value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Ask a question..." disabled={isAsking} className="input-field" style={{ border: 'none', boxShadow: 'none', background: 'transparent' }} />
                       <button type="submit" disabled={isAsking || !chatInput.trim()} className="btn btn-secondary" style={{ marginLeft: '0.5rem' }}>Send</button>
                     </form>
                   )}

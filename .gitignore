@@ -20,3 +20,7 @@ edutube-frontend/dist-ssr/
 .DS_Store
 .vscode/
 *.log
+# Test outputs and local tool caches
+coverage/
+.vitest/
+.cache/

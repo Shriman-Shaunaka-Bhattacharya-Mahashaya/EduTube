@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 
 export default function EducatorDashboard({ user, token }) {
@@ -6,7 +6,7 @@ export default function EducatorDashboard({ user, token }) {
   const [name, setName] = useState('');
   const [tags, setTags] = useState('');
   const [status, setStatus] = useState('');
-  const [myMedia, setMyMedia] = useState([]); 
+  const [myMedia, setMyMedia] = useState([]);
   const [profile, setProfile] = useState(null); // State for educator's profile stats
 
   const fetchMyMedia = async () => {
@@ -21,90 +21,66 @@ export default function EducatorDashboard({ user, token }) {
     }
   };
 
-  const fetchProfile = async () => {
-    try {
-      const res = await axios.get('http://localhost:5000/api/users/me', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setProfile(res.data);
-    } catch (err) {
-      console.error('Failed to fetch profile', err);
-    }
-  };
-
   useEffect(() => {
-    if (user?.userId && token) {
-      fetchMyMedia();
-      fetchProfile();
-    }
-  }, [user.userId, token]);
-
-  const handleUpload = async (e) => {
-    e.preventDefault();
-    if (!file) return setStatus('Please select a file.');
-
-    setStatus('Uploading to Cloudinary... this may take a moment.');
-    
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('name', name);
-    formData.append('authorName', user.userId); 
-    formData.append('authorId', user.userId);
-    formData.append('tags', tags);
-
-    try {
-      await axios.post('http://localhost:5000/api/media/upload', formData, {
-        headers: { 
-          'Content-Type': 'multipart/form-data',
-          'Authorization': `Bearer ${token}`
-        }
+    if (!user?.userId || !token) return;
+    let active = true;
+    const config = { headers: { Authorization: `Bearer ${token}` } };
+    axios.get(`http://localhost:5000/api/media/educator/${user.userId}`, config)
+      .then(res => { if (active) setMyMedia(res.data); })
+      .catch(err => {
+        console.error('Failed to fetch media', err);
+        if (active && err.response?.status === 401) setStatus('Session expired. Please log in again.');
       });
-      setStatus('Upload successful!');
-      
-      setFile(null);
-      setName('');
-      setTags('');
-      
-      fetchMyMedia(); 
-    } catch (err) {
-      setStatus('Upload failed.');
-      console.error(err);
-    }
+    axios.get('http://localhost:5000/api/users/me', config)
+      .then(res => { if (active) setProfile(res.data); })
+      .catch(err => console.error('Failed to fetch profile', err));
+    return () => { active = false; };
+  }, [user?.userId, token]);
+
+  const [uploading, setUploading] = useState(false);
+  const handleUpload = async (event) => {
+    event.preventDefault();
+    if (!file) return;
+    if (file.size > 50 * 1024 * 1024) return setStatus('Failed: file exceeds the 50 MB limit.');
+    const form = event.currentTarget;
+    const data = new FormData();
+    data.append('file', file);
+    data.append('name', name);
+    data.append('tags', tags);
+    data.append('authorId', user.userId);
+    data.append('authorName', user.userId);
+    setUploading(true);
+    setStatus('');
+    try {
+      await axios.post('http://localhost:5000/api/media/upload', data, { headers: { Authorization: `Bearer ${token}` } });
+      setFile(null); setName(''); setTags(''); form.reset();
+      form.querySelector('input[type="file"]').value = '';
+      setStatus('Content uploaded successfully.');
+      await fetchMyMedia();
+    } catch (err) { setStatus(`Upload failed: ${err.response?.data?.error || 'Please try again.'}`); }
+    finally { setUploading(false); }
   };
-
   const handleDelete = async (mediaId) => {
-    const isConfirmed = window.confirm("Are you sure you want to permanently delete this media? This will also wipe the AI knowledge base for this file.");
-    if (!isConfirmed) return;
-
+    if (!window.confirm('Permanently delete this media and its AI knowledge base?')) return;
     try {
-      await axios.delete(`http://localhost:5000/api/media/${mediaId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      // Update local state to remove the deleted item instantly without refreshing the page
-      setMyMedia(prevMedia => prevMedia.filter(media => media._id !== mediaId));
-      setStatus('Media successfully deleted.');
-      
-      // Clear status message after 3 seconds
-      setTimeout(() => setStatus(''), 3000);
-    } catch (err) {
-      console.error(err);
-      setStatus('Failed to delete media.');
-    }
+      await axios.delete(`http://localhost:5000/api/media/${mediaId}`, { headers: { Authorization: `Bearer ${token}` } });
+      setMyMedia(previous => previous.filter(media => media._id !== mediaId));
+      setStatus('Media deleted successfully.');
+    } catch { setStatus('Failed to delete media. Please try again.'); }
   };
 
   return (
     <div className="app-container">
-      
+
       {/* Educator Stats Dashboard */}
-      <div className="card" style={{ backgroundColor: 'var(--dark)', color: 'var(--text-light)', marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+      <div className="card" style={{ backgroundColor: 'var(--accent-soft)', color: 'var(--text-main)', marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h2 style={{ margin: '0 0 5px 0', color: 'var(--text-light)' }}>Welcome, {user.userId}</h2>
-          <p style={{ margin: 0, color: '#94a3b8' }}>Educator Dashboard</p>
+          <h1 style={{ margin: '0 0 5px 0', color: 'var(--text-main)' }}>Welcome, {user.userId}</h1>
+          <p style={{ margin: 0, color: 'var(--text-muted)' }}>Educator Dashboard</p>
         </div>
         <div style={{ textAlign: 'center', backgroundColor: 'rgba(255, 255, 255, 0.1)', padding: '1rem 2rem', borderRadius: 'var(--radius-md)' }}>
-          <h1 style={{ margin: '0', fontSize: '2.5em', color: '#60a5fa' }}>{profile?.subscriberCount || 0}</h1>
-          <p style={{ margin: '5px 0 0 0', textTransform: 'uppercase', fontSize: '0.8em', letterSpacing: '1px', color: 'var(--text-light)' }}>Subscribers</p>
+          <h1 style={{ margin: '0', fontSize: '2.5em', color: 'var(--primary)' }}>{profile?.subscriberCount || 0}</h1>
+          <p style={{ margin: '5px 0 0 0', textTransform: 'uppercase', fontSize: '0.8em', letterSpacing: '1px', color: 'var(--text-main)' }}>Subscribers</p>
         </div>
       </div>
 
@@ -112,35 +88,36 @@ export default function EducatorDashboard({ user, token }) {
       <div className="card" style={{ marginBottom: '2.5rem' }}>
         <h3 style={{ marginBottom: '1.5rem', color: 'var(--dark)' }}>Upload New Media</h3>
         <form onSubmit={handleUpload} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxWidth: '500px' }}>
-          <input 
-            type="file" 
+          <input
+            type="file" aria-label="Choose media file" accept=".mp4,.pdf,.jpg,.jpeg,.png,.txt" disabled={uploading}
             className="input-field"
-            onChange={e => setFile(e.target.files[0])} 
+            onChange={e => setFile(e.target.files[0])}
             style={{ padding: '0.5rem', background: 'var(--bg-input)' }}
-            required 
+            required
           />
-          <input 
-            type="text" 
+          <input
+            type="text"
             className="input-field"
-            placeholder="Media Name" 
-            value={name} 
-            onChange={e => setName(e.target.value)} 
-            required 
+            aria-label="Media name" placeholder="Media name" disabled={uploading}
+            value={name}
+            onChange={e => setName(e.target.value)}
+            required
           />
-          <input 
-            type="text" 
+          <input
+            type="text"
             className="input-field"
-            placeholder="Tags (comma separated)" 
-            value={tags} 
-            onChange={e => setTags(e.target.value)} 
-            required 
+            aria-label="Tags, separated by commas" placeholder="Tags (comma separated)" disabled={uploading}
+            value={tags}
+            onChange={e => setTags(e.target.value)}
+            required
           />
-          <button type="submit" className="btn btn-primary" style={{ padding: '0.75rem', fontSize: '1rem', marginTop: '0.5rem' }}>
-            Upload Content
+          <p className="muted">MP4, PDF, JPEG, PNG or TXT ? Up to 50 MB</p>
+          <button disabled={uploading} type="submit" className="btn btn-primary" style={{ padding: '0.75rem', fontSize: '1rem', marginTop: '0.5rem' }}>
+            {uploading ? 'Uploading?' : 'Upload content'}
           </button>
         </form>
         {status && (
-          <p style={{ marginTop: '1rem', fontWeight: '500', color: status.toLowerCase().includes('failed') ? 'var(--danger)' : 'var(--secondary)' }}>
+          <p role="status" style={{ marginTop: '1rem', fontWeight: '500', color: status.toLowerCase().includes('failed') ? 'var(--danger)' : 'var(--secondary)' }}>
             {status}
           </p>
         )}
@@ -157,9 +134,9 @@ export default function EducatorDashboard({ user, token }) {
           <div className="media-grid">
             {myMedia.map(media => (
               <div key={media._id} className="card" style={{ position: 'relative', display: 'flex', flexDirection: 'column' }}>
-                
+
                 {/* Destructive Delete Button */}
-                <button 
+                <button
                   onClick={() => handleDelete(media._id)}
                   className="btn btn-danger"
                   style={{ position: 'absolute', top: '1rem', right: '1rem', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
@@ -170,7 +147,7 @@ export default function EducatorDashboard({ user, token }) {
 
                 <div style={{ paddingRight: '7rem' }}>
                   <h4 style={{ fontSize: '1.15rem', marginBottom: '0.5rem', lineHeight: '1.4' }}>{media.name}</h4>
-                  
+
                   <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
                     <span style={{ backgroundColor: 'var(--bg-input)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
                       <strong>Type:</strong> {media.mimetype.split('/')[0]}
@@ -183,7 +160,7 @@ export default function EducatorDashboard({ user, token }) {
                     </span>
                   </div>
                 </div>
-                
+
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1.5rem' }}>
                   {media.tags && media.tags.length > 0 ? media.tags.map(tag => (
                     <span key={tag} className="tag-badge">{tag}</span>
