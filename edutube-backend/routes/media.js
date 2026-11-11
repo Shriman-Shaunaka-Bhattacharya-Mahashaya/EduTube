@@ -26,7 +26,7 @@ const storage = new CloudinaryStorage({
 // Define the allowed file types
 const allowedTypes = ['video/mp4', 'application/pdf', 'image/jpeg', 'image/png', 'text/plain'];
 
-const upload = multer({ 
+const upload = multer({
     storage,
     limits: {
         fileSize: 50 * 1024 * 1024 // 50 MB limit
@@ -42,6 +42,7 @@ const upload = multer({
 
 // 1. Educator: Upload Media to Cloud (Secured)
 router.post('/upload', auth, (req, res) => {
+    if (req.user.role !== 'educator') return res.status(403).json({ error: 'Only educators can upload media' });
     // Execute the multer middleware manually to catch its specific errors
     upload.single('file')(req, res, async (err) => {
         if (err) {
@@ -53,8 +54,10 @@ router.post('/upload', auth, (req, res) => {
         }
 
         try {
-            const { name, authorName, authorId, tags } = req.body;
-            
+            const { name, tags } = req.body;
+            const authorId = req.user.userId;
+            const authorName = req.user.userId;
+
             if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
             const tagArray = tags ? tags.split(',').map(tag => tag.trim().toLowerCase()) : [];
@@ -62,7 +65,7 @@ router.post('/upload', auth, (req, res) => {
             const newMedia = new Media({
                 name,
                 fileUrl: req.file.path,
-                publicId: req.file.filename, 
+                publicId: req.file.filename,
                 mimetype: req.file.mimetype,
                 authorName,
                 authorId,
@@ -83,16 +86,16 @@ router.get('/search', async (req, res) => {
     try {
         const { tag, author, id } = req.query;
         let query = {};
-        
+
         if (id) {
             query._id = id;
         }
-        
+
         if (tag) {
             // Replaces strict/regex matching with native Full-Text stemming search
-            query.$text = { $search: tag }; 
+            query.$text = { $search: tag };
         }
-        
+
         if (author) {
             // Keep regex here: stemming does not apply to usernames (e.g. "prof_roy" vs "prof_roys")
             query.$or = [
@@ -100,11 +103,11 @@ router.get('/search', async (req, res) => {
                 { authorId: { $regex: author, $options: 'i' } }
             ];
         }
-        
+
         // If searching by text, optionally sort by text score relevance instead of just timestamp
         let sortConfig = { timestamp: -1 };
         let projection = {};
-        
+
         if (tag) {
             projection = { score: { $meta: "textScore" } };
             sortConfig = { score: { $meta: "textScore" } };
@@ -137,7 +140,7 @@ router.get('/search', async (req, res) => {
 //             const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
 //             const chunksize = (end - start) + 1;
 //             const file = fs.createReadStream(videoPath, { start, end });
-            
+
 //             const head = {
 //                 'Content-Range': `bytes ${start}-${end}/${fileSize}`,
 //                 'Accept-Ranges': 'bytes',
@@ -162,7 +165,7 @@ router.get('/search', async (req, res) => {
 // 4. Student: Toggle Upvote Media
 router.put('/upvote/:id', auth, async (req, res) => {
     try {
-        const { userId } = req.body;
+        const userId = req.user.userId;
         if (!userId) return res.status(400).json({ error: 'User ID is required' });
 
         const media = await Media.findById(req.params.id);
@@ -175,10 +178,10 @@ router.put('/upvote/:id', auth, async (req, res) => {
         if (hasUpvoted) {
             // They already upvoted, so remove them (toggle off)
             media.upvotedBy = upvotedByArray.filter(id => id !== userId);
-            media.upvotes = Math.max(0, media.upvotes - 1); 
+            media.upvotes = Math.max(0, media.upvotes - 1);
         } else {
             // Add their upvote (toggle on)
-            media.upvotedBy.push(userId);
+            media.upvotedBy = [...upvotedByArray, userId];
             media.upvotes += 1;
         }
 
@@ -224,7 +227,7 @@ router.delete('/:id', auth, async (req, res) => {
         const urlParts = media.fileUrl.split('/');
         const filenameWithExt = urlParts[urlParts.length - 1];
         const folder = urlParts[urlParts.length - 2];
-        const publicId = `${folder}/${filenameWithExt.split('.')[0]}`; 
+        const publicId = media.publicId || `${folder}/${filenameWithExt.split('.')[0]}`;
 
         // Determine Cloudinary resource type for deletion
         let resourceType = 'image'; // Default for images and standard PDFs
@@ -235,10 +238,10 @@ router.delete('/:id', auth, async (req, res) => {
         await Promise.all([
             // A. Destroy file on Cloudinary
             cloudinary.uploader.destroy(publicId, { resource_type: resourceType }).catch(err => console.error("Cloudinary deletion failed:", err)),
-            
+
             // B. Wipe associated vector chunks from the AI database
             DocumentChunk.deleteMany({ mediaId: media._id }),
-            
+
             // C. Delete the actual media document
             Media.findByIdAndDelete(media._id)
         ]);

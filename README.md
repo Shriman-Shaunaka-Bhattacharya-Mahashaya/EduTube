@@ -121,3 +121,6 @@ npm run dev
 
 ### Start the Vite frontend
 npm run dev
+## Automated tests
+
+GitHub Actions runs backend API tests, frontend interaction tests, coverage gates, lint/syntax checks, and the frontend build on pushes and pull requests. See [TESTING.md](./TESTING.md) for local commands, CI behavior, coverage scope, and test isolation. No production credentials are needed.

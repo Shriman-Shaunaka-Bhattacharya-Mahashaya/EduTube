@@ -11,24 +11,7 @@ const auth = require('../middleware/auth');
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// Lazy-load the local embedding model so it doesn't block server startup
-let extractor;
-async function getExtractor() {
-    if (!extractor) {
-        // Dynamically import the ESM module in a CommonJS environment
-        const { pipeline } = await import('@xenova/transformers');
-        // all-MiniLM-L6-v2 is a lightweight, highly accurate 384-dimension model
-        extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
-    }
-    return extractor;
-}
-
-// Helper to generate the 384-length array
-async function generateEmbedding(text) {
-    const extract = await getExtractor();
-    const output = await extract(text, { pooling: 'mean', normalize: true });
-    return Array.from(output.data);
-}
+const { generateEmbedding } = require('../services/embeddings');
 
 // 1. Process PDF into Vector Database
 router.post('/process/:mediaId', auth, async (req, res) => {
@@ -90,7 +73,10 @@ router.post('/ask/:mediaId', auth, async (req, res) => {
     try {
         // 1. Extract both the question AND the chat history from the frontend
         const { question, history = [] } = req.body;
-        if (!question) return res.status(400).json({ error: 'Question is required' });
+        if (typeof question !== 'string' || !question.trim()) return res.status(400).json({ error: 'Question is required' });
+
+        if (!Array.isArray(history) || history.some(msg => !msg || typeof msg.text !== 'string' || !['ai', 'user'].includes(msg.role))) return res.status(400).json({ error: 'Invalid conversation history' });
+        if (!mongoose.isValidObjectId(req.params.mediaId)) return res.status(400).json({ error: 'Invalid media ID' });
 
         // 2. Convert the student's question into math
         const questionEmbedding = await generateEmbedding(question);
@@ -156,7 +142,7 @@ router.post('/ask/:mediaId', auth, async (req, res) => {
 router.post('/agent-search', auth, async (req, res) => {
     try {
         const { query } = req.body;
-        if (!query) return res.status(400).json({ error: 'Query is required' });
+        if (typeof query !== 'string' || !query.trim()) return res.status(400).json({ error: 'Query is required' });
 
         // 1. Send the natural language query to Groq
         const chatCompletion = await groq.chat.completions.create({
@@ -183,7 +169,7 @@ Examples:
 
         // 2. Parse the AI's decision
         const aiDecision = JSON.parse(chatCompletion.choices[0].message.content);
-        console.log("AI Search Decision:", aiDecision);
+        if (!aiDecision || !['tag', 'author'].includes(aiDecision.type) || typeof aiDecision.value !== 'string' || !aiDecision.value.trim()) return res.status(502).json({ error: 'Invalid AI search response' });
 
         // 3. Execute the database search based on the AI's logic
         let dbQuery = {};

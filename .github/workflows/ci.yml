@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend tests (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22', '24']
+    defaults:
+      run:
+        working-directory: edutube-backend
+    env:
+      MONGOMS_VERSION: '7.0.24'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: edutube-backend/package-lock.json
+      - run: npm ci
+      - run: npm run check
+      - run: npm run test:ci
+      - name: Upload backend coverage
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: backend-coverage-node-${{ matrix.node }}
+          path: edutube-backend/coverage/
+          retention-days: 14
+          if-no-files-found: warn
+
+  frontend:
+    name: Frontend tests and build (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22', '24']
+    defaults:
+      run:
+        working-directory: edutube-frontend
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: edutube-frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run test:ci
+      - run: npm run build
+      - name: Upload frontend coverage
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-coverage-node-${{ matrix.node }}
+          path: edutube-frontend/coverage/
+          retention-days: 14
+          if-no-files-found: warn

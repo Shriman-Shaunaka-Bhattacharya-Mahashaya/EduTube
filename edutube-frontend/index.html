@@ -4,7 +4,14 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>edutube-frontend</title>
+    <meta name="description" content="Learn with educational videos, shared resources, and your AI tutor on EduTube." />
+    <title>EduTube — Your space to learn</title>
+    <script>
+      try {
+        const saved = localStorage.getItem('edutube_theme');
+        document.documentElement.dataset.theme = saved === 'light' || saved === 'dark' ? saved : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      } catch { document.documentElement.dataset.theme = 'light'; }
+    </script>
   </head>
   <body>
     <div id="root"></div>

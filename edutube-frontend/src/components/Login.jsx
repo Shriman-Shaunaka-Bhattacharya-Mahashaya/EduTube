@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import { useState } from 'react';
 import axios from 'axios';
 
 export default function Login({ onLogin }) {
@@ -8,72 +8,51 @@ export default function Login({ onLogin }) {
   const [role, setRole] = useState('student');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
-
+  const [pending, setPending] = useState(false);
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setMessage('');
-    
+    setError(''); setMessage(''); setPending(true);
     try {
       if (isRegistering) {
-        // Registration Flow
         await axios.post('http://localhost:5000/api/users/register', { userId, password, role });
-        setMessage('Registration successful! You can now log in.');
-        setIsRegistering(false); // Switch back to login view
-        setPassword('');
+        setMessage('Account created. Log in to get started.');
+        setIsRegistering(false); setPassword('');
       } else {
-        // Login Flow
         const res = await axios.post('http://localhost:5000/api/users/login', { userId, password });
-        // Pass both user data and token up to App.jsx
         onLogin(res.data.user, res.data.token);
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Authentication failed');
-    }
+      setError(err.response?.data?.error || 'Unable to connect. Please try again.');
+    } finally { setPending(false); }
   };
-
-  return (
-    <div style={{ maxWidth: '300px', margin: '50px auto', textAlign: 'center' }}>
-      <h1>{isRegistering ? 'Create Account' : 'EduTube Login'}</h1>
-      
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        <input 
-          type="text" 
-          placeholder="User ID" 
-          value={userId} 
-          onChange={e => setUserId(e.target.value)} 
-          required 
-        />
-        <input 
-          type="password" 
-          placeholder="Password" 
-          value={password} 
-          onChange={e => setPassword(e.target.value)} 
-          required 
-        />
-        
-        {/* Only show role selection during registration */}
-        {isRegistering && (
-          <select value={role} onChange={e => setRole(e.target.value)}>
-            <option value="student">Student</option>
-            <option value="educator">Educator</option>
-          </select>
-        )}
-        
-        <button type="submit" style={{ padding: '8px', cursor: 'pointer' }}>
-          {isRegistering ? 'Register' : 'Login'}
-        </button>
-      </form>
-
-      {error && <p style={{ color: 'red', fontSize: '0.9em' }}>{error}</p>}
-      {message && <p style={{ color: 'green', fontSize: '0.9em' }}>{message}</p>}
-
-      <button 
-        onClick={() => { setIsRegistering(!isRegistering); setError(''); setMessage(''); }} 
-        style={{ marginTop: '20px', background: 'none', border: 'none', color: 'blue', cursor: 'pointer', textDecoration: 'underline' }}
-      >
-        {isRegistering ? 'Already have an account? Log in' : 'Need an account? Register'}
-      </button>
-    </div>
-  );
+  return <div className="login-layout">
+    <section className="login-story">
+      <h1>Follow your<br />curiosity<span className="accent">.</span></h1>
+      <p className="story-description">Great ideas start with a question. Explore lessons, learn from educators, and make sense of it all with your AI tutor.</p>
+      <div className="learning-preview" aria-hidden="true">
+        <div className="preview-heading"><span className="play-symbol">▷</span><span>Your next discovery</span><span className="preview-type">LEARN</span></div>
+        <div className="preview-content"><span className="book-spine" /><span className="book-spine" /><span className="book-spine" /><div><strong>One place.<br />So much to explore.</strong><p>Videos · Resources · Ideas</p></div></div>
+        <div className="preview-footer"><span className="status-dot" /> A space for curious minds</div>
+      </div>
+      <div className="story-note"><span>Learn at your pace</span><span>Share what you know</span></div>
+    </section>
+    <section className="login-panel" aria-labelledby="login-title">
+      <div className="login-form-wrap">
+        <h2 id="login-title">{isRegistering ? 'Start your next chapter' : 'Welcome back'}</h2>
+        <p className="muted">{isRegistering ? 'Create an account and make room for learning.' : 'Your next discovery is waiting for you.'}</p>
+        <form onSubmit={handleSubmit} className="auth-form">
+          <label htmlFor="user-id">User ID</label>
+          <input id="user-id" className="input-field" autoComplete="username" placeholder="Enter your user ID" value={userId} onChange={e => setUserId(e.target.value)} required disabled={pending} />
+          <label htmlFor="password">Password</label>
+          <input id="password" className="input-field" type="password" autoComplete={isRegistering ? 'new-password' : 'current-password'} placeholder="Enter your password" value={password} onChange={e => setPassword(e.target.value)} required disabled={pending} />
+          {isRegistering && <><label htmlFor="role">I’m here to</label><select id="role" className="select-field" value={role} onChange={e => setRole(e.target.value)} disabled={pending}><option value="student">Learn as a student</option><option value="educator">Share as an educator</option></select></>}
+          {error && <p className="notice error" role="alert">{error}</p>}
+          {message && <p className="notice success" role="status">{message}</p>}
+          <button className="btn btn-primary auth-submit" type="submit" disabled={pending}>{pending ? 'Please wait…' : isRegistering ? 'Create account' : 'Log in'}<span aria-hidden="true">→</span></button>
+        </form>
+        <p className="auth-switch">{isRegistering ? 'Already part of EduTube?' : 'New to EduTube?'} <button className="text-button" disabled={pending} onClick={() => { setIsRegistering(!isRegistering); setError(''); setMessage(''); }}>{isRegistering ? 'Log in' : 'Create an account'}</button></p>
+        <div className="login-footnote">For students who ask.<br />For educators who inspire.</div>
+      </div>
+    </section>
+  </div>;
 }

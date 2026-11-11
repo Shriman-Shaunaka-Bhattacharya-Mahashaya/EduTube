@@ -11,6 +11,8 @@ router.post('/register', async (req, res) => {
     const { userId, password, role } = req.body;
     if (!userId || !password || !role) return res.status(400).json({ error: 'All fields required' });
 
+    if (typeof userId !== 'string' || typeof password !== 'string' || !userId.trim() || !['student', 'educator'].includes(role)) return res.status(400).json({ error: 'Invalid registration fields' });
+
     try {
         let user = await User.findOne({ userId });
         if (user) return res.status(400).json({ error: 'User ID already exists' });
@@ -31,6 +33,8 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
     const { userId, password } = req.body;
     if (!userId || !password) return res.status(400).json({ error: 'All fields required' });
+
+    if (typeof userId !== 'string' || typeof password !== 'string') return res.status(400).json({ error: 'Invalid credentials' });
 
     try {
         const user = await User.findOne({ userId });
@@ -71,10 +75,11 @@ router.get('/subscriptions', auth, async (req, res) => {
 router.put('/subscribe', auth, async (req, res) => {
     try {
         const { educatorId } = req.body;
-        if (!educatorId) return res.status(400).json({ error: 'Educator ID required' });
+        if (typeof educatorId !== 'string' || !educatorId.trim()) return res.status(400).json({ error: 'Educator ID required' });
 
         const student = await User.findById(req.user.id);
         
+        if (!student) return res.status(404).json({ error: 'User not found' });
         if (student.role !== 'student') {
             return res.status(403).json({ error: 'Only students can subscribe' });
         }
@@ -133,10 +138,11 @@ router.get('/interests', auth, async (req, res) => {
 router.put('/interest', auth, async (req, res) => {
     try {
         const { topic } = req.body;
-        if (!topic) return res.status(400).json({ error: 'Topic required' });
+        if (typeof topic !== 'string' || !topic.trim()) return res.status(400).json({ error: 'Topic required' });
 
         const user = await User.findById(req.user.id);
         
+        if (!user) return res.status(404).json({ error: 'User not found' });
         if (user.role !== 'student') {
             return res.status(403).json({ error: 'Only students can save interests' });
         }
@@ -173,10 +179,11 @@ router.get('/saved-media', auth, async (req, res) => {
 router.put('/saved-media', auth, async (req, res) => {
     try {
         const { mediaId, name } = req.body;
-        if (!mediaId || !name) return res.status(400).json({ error: 'Media ID and Name required' });
+        if (typeof mediaId !== 'string' || !mediaId.trim() || typeof name !== 'string' || !name.trim()) return res.status(400).json({ error: 'Media ID and Name required' });
 
         const user = await User.findById(req.user.id);
         
+        if (!user) return res.status(404).json({ error: 'User not found' });
         if (user.role !== 'student') {
             return res.status(403).json({ error: 'Only students can save media' });
         }
